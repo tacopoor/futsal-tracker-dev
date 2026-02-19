@@ -133,7 +133,6 @@ function filterRecords(all, { ym, place }) {
 
 /* ====== Aggregations ====== */
 function calcKPIs(records) {
-  const uniqueDates = new Set(records.map((r) => r.date));
   let matches = 0;
 
   let gr = 0,
@@ -172,7 +171,7 @@ function calcKPIs(records) {
   }
 
   return {
-    playDays: uniqueDates.size,
+    playDays: records.length,
     matches,
     goals: { total: goalsTotal, right: gr, left: gl, head: gh },
     assists: { total: assists, toTarget: assistsToTarget },

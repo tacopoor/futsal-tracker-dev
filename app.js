@@ -548,9 +548,7 @@ filterPlace.addEventListener("change", renderMypage);
 
 /* ====== KPI ====== */
 function renderKPIs(records) {
-  const playDays = uniq(
-    records.map((r) => r?.date).filter((v) => typeof v === "string" && v),
-  ).length;
+  const playDays = records.filter((r) => r && r.date && r.place).length;
 
   let matchSum = 0;
 
