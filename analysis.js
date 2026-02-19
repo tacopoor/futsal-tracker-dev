@@ -318,6 +318,46 @@ function setupCanvas(canvas) {
   return { ctx, w, h };
 }
 
+// ★横スクロール用：canvas の “見た目幅(style.width)” をデータ数に応じて伸ばし、
+// 内部の描画解像度(canvas.width/height)も合わせる
+function setupScrollableCanvas(
+  canvas,
+  { minGroupPx = 22, gap = 8, padding = 34 } = {},
+) {
+  const dpr = window.devicePixelRatio || 1;
+
+  // 親要素（chartScroll / chartWrap）幅を基準にする
+  const parent = canvas.parentElement;
+  const parentRect = parent
+    ? parent.getBoundingClientRect()
+    : canvas.getBoundingClientRect();
+  const viewW = Math.max(300, Math.floor(parentRect.width));
+
+  // データ数（renderTrendChart で dataset.count を入れている前提）
+  const count = Math.max(0, Number(canvas.dataset.count || "0"));
+
+  // 1グループ(=1記録)あたりの最低幅 + グループ間ギャップで必要幅を見積もる
+  // 3本バーなので、minGroupPx は「グループ全体の幅」扱い
+  const neededW =
+    count > 0 ? padding + 10 + gap + count * (minGroupPx + gap) : viewW;
+
+  const cssW = Math.max(viewW, Math.floor(neededW));
+  const cssH = 260; // analysis.html の canvas 高さに合わせる
+
+  // ★見た目の幅（ここが横スクロールの要）
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+
+  // ★内部解像度
+  canvas.width = Math.floor(cssW * dpr);
+  canvas.height = Math.floor(cssH * dpr);
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scaleの二重掛け防止
+
+  return { ctx, w: cssW, h: cssH };
+}
+
 function clearChart(ctx, w, h) {
   ctx.clearRect(0, 0, w, h);
   // bg is CSS; do nothing
