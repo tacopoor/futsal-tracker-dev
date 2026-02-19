@@ -561,7 +561,9 @@ addVideoBtn?.addEventListener("click", () => {
   const count = videoInputs.querySelectorAll(".videoRow").length;
   if (count >= VIDEO_MAX_ROWS) return;
 
-  videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }));
+  videoInputs.appendChild(
+    createVideoRow({ url: "", tag: "その他" }, { removable: false }),
+  );
   updateAddVideoBtnState();
 });
 
