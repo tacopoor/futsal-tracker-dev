@@ -492,7 +492,7 @@ saveBtn.addEventListener("click", () => {
 
   resetForm();
   openDoneModal();
-};);
+});
 
 /* ====== filterYM options ====== */
 function getYMLabel(ym) {
