@@ -324,6 +324,77 @@ function groupByPlace(records) {
   return arr;
 }
 
+// ===== 年別集計（全期間） =====
+function buildYearSummary(allRecords) {
+  // year => sums
+  const map = new Map();
+
+  for (const r of allRecords) {
+    if (!r || !r.date) continue;
+
+    const year = String(r.date).slice(0, 4);
+    if (!/^\d{4}$/.test(year)) continue;
+
+    if (!map.has(year)) {
+      map.set(year, {
+        year,
+        dates: new Set(), // Play日数用
+        matches: 0,
+        goals: 0,
+        assists: 0,
+        nutmegs: 0,
+      });
+    }
+
+    const row = map.get(year);
+    row.dates.add(r.date);
+    row.matches += getMatches(r);
+    row.goals += sumGoals(r);
+    row.assists += r.assists?.total ?? 0;
+    row.nutmegs += getNutTotal(r);
+  }
+
+  const arr = [...map.values()].map((x) => ({
+    year: x.year,
+    playDays: x.dates.size,
+    matches: x.matches,
+    goals: x.goals,
+    assists: x.assists,
+    nutmegs: x.nutmegs,
+  }));
+
+  // 最新年 → 古い年
+  arr.sort((a, b) => b.year.localeCompare(a.year));
+  return arr;
+}
+
+function renderYearSummaryTable(allRecords) {
+  const tbody = document.getElementById("yearSummaryTbody");
+  if (!tbody) return;
+
+  const rows = buildYearSummary(allRecords);
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">データがありません。</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${r.year}</td>
+        <td>${r.playDays}</td>
+        <td>${r.matches}</td>
+        <td>${r.goals}</td>
+        <td>${r.assists}</td>
+        <td>${r.nutmegs}</td>
+      </tr>
+    `,
+    )
+    .join("");
+}
+
 /* ====== Simple Canvas Charts (no libs) ====== */
 function setupCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
@@ -785,6 +856,10 @@ function renderRecordsTable(records) {
     tr.innerHTML = `<td colspan="6" class="muted">※表示は先頭200件まで（全${sorted.length}件）</td>`;
     recordsTbody.appendChild(tr);
   }
+
+  // 件数表示（HTMLに #recordsCountText がある前提）
+  const countEl = document.getElementById("recordsCountText");
+  if (countEl) countEl.textContent = `（${records.length}件）`;
 }
 
 /* ====== Main ====== */
@@ -812,6 +887,7 @@ function render() {
 
   renderPlaceTable(filtered);
   renderRecordsTable(filtered);
+  renderYearSummaryTable(all);
 }
 
 function init() {

@@ -262,6 +262,29 @@
         word-break: break-word; /* 日本語/英数混在でも崩れにくく */
         line-height: 1.35;
       }
+      /* ===== アコーディオン（details/summary） ===== */
+      .accSummary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .accSummary::-webkit-details-marker {
+        display: none;
+      }
+      .acc[open] .accSummary {
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+      }
+      .accBody {
+        padding-top: 10px;
+      }
     </style>
   </head>
   <body>
@@ -391,20 +414,51 @@
       </section>
 
       <section class="card">
-        <h2 class="h2">対象レコード一覧</h2>
+        <details id="recordsAccordion" class="acc" open="false">
+          <summary class="accSummary">
+            <span>対象レコード一覧</span>
+            <span id="recordsCountText" class="muted small"></span>
+          </summary>
+
+          <div class="accBody" style="margin-top: 10px">
+            <div style="overflow: auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-dateplace">日付・場所</th>
+                    <th>試合数</th>
+                    <th>ゴール</th>
+                    <th>アシスト</th>
+                    <th>股抜き</th>
+                    <th>メモ</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2 class="h2">年別集計（全期間）</h2>
+        <div class="muted small" style="margin-bottom: 8px">
+          ※表示条件（年月/場所）に関係なく、保存データ全体から年ごとに集計します。
+        </div>
+
         <div style="overflow: auto">
           <table>
             <thead>
               <tr>
-                <th>日付・場所</th>
+                <th>年</th>
+                <th>Play日数</th>
                 <th>試合数</th>
                 <th>ゴール</th>
                 <th>アシスト</th>
                 <th>股抜き</th>
-                <th>メモ</th>
               </tr>
             </thead>
-            <tbody id="recordsTbody"></tbody>
+            <tbody id="yearSummaryTbody"></tbody>
           </table>
         </div>
       </section>
