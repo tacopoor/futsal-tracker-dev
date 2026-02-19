@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="manifest.json" />
+    <title>フットサル記録（Goal / Assist）</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111827;
+        --muted: #9ca3af;
+        --txt: #e5e7eb;
+        --accent: #22c55e;
+        --line: #243041;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "Noto Sans JP",
+          sans-serif;
+        background: var(--bg);
+        color: var(--txt);
+      }
+      header {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: rgba(11, 18, 32, 0.92);
+        backdrop-filter: blur(6px);
+        z-index: 5;
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      main {
+        padding: 16px;
+        padding-bottom: 92px;
+        max-width: 860px;
+        margin: 0 auto;
+      }
+
+      .tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        background: rgba(17, 24, 39, 0.96);
+        border-top: 1px solid var(--line);
+        z-index: 5;
+      }
+      .tabbtn {
+        flex: 1;
+        border: 1px solid var(--line);
+        background: #0f172a;
+        color: var(--txt);
+        padding: 12px;
+        border-radius: 14px;
+        font-size: 14px;
+      }
+      .tabbtn.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15) inset;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 10px 0 6px;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: #0f172a;
+        color: var(--txt);
+        font-size: 14px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+
+      .btn {
+        cursor: pointer;
+      }
+      .btn.primary {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        border: none;
+        color: #052e16;
+        font-weight: 700;
+      }
+      .btn.danger {
+        background: #ef4444;
+        border: none;
+        color: #fff;
+        font-weight: 700;
+      }
+      .btn.ghost {
+        background: transparent;
+      }
+      .btnRow {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .btnRow .btn {
+        width: auto;
+        min-width: 140px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .h2 {
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+      .sep {
+        height: 1px;
+        background: var(--line);
+        margin: 10px 0;
+      }
+      .hidden {
+        display: none;
+      }
+      .small {
+        font-size: 12px;
+      }
+
+      /* KPI 縦並び */
+      .kpiStack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .kpiStack .box {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .kpiStack .num {
+        font-size: 22px;
+        font-weight: 800;
+        margin-top: 6px;
+      }
+
+      /* List */
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .item {
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .itemRow {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .itemMain {
+        flex: 1;
+        min-width: 0;
+      }
+      .itemDate {
+        font-weight: 800;
+      }
+      .itemPlace {
+        margin-top: 4px;
+      }
+      .itemMeta {
+        margin-top: 6px;
+      }
+      .itemActions {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: flex-start;
+      }
+      .itemActions .btn {
+        width: auto;
+        min-width: 64px;
+        white-space: nowrap;
+        padding: 8px 12px;
+        border-radius: 12px;
+      }
+
+      /* Filter layout */
+      .filterRow2 {
+        display: flex;
+        gap: 10px;
+      }
+      .filterRow2 > div {
+        flex: 1;
+      }
+      .filterBlock {
+        margin-top: 10px;
+      }
+      .kpiGap {
+        margin-top: 12px;
+      }
+      .centerLine {
+        text-align: center;
+        width: 100%;
+      }
+
+      /* ===== エラーメッセージ（下部表示を目立たせる） ===== */
+      .msg {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .msg.hidden {
+        display: none;
+      }
+      .msg.error {
+        background: #ef4444;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      /* ===== 設定画面：入力とボタンの縦位置を揃える ===== */
+      .grid.alignBottom {
+        align-items: end; /* 2列目のボタンが入力と同じ下端に揃う */
+      }
+
+      /* Modal */
+      .modalOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      .modalCard {
+        width: min(360px, 90vw);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      .modalTitle {
+        font-size: 16px;
+        font-weight: 800;
+        margin: 0 0 8px;
+      }
+      .modalOverlay.hidden {
+        display: none;
+      }
+
+      /* Settings */
+      .pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #0f172a;
+        font-size: 12px;
+        color: var(--txt);
+      }
+      .placeList {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .placeRow {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .placeRow .name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .placeRow button {
+        width: auto;
+        min-width: 80px;
+      }
+      /* ===== Accordion (record list by YYYY-MM) ===== */
+      .accItem {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0f172a;
+      }
+
+      .accHeaderBtn {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: var(--txt);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .accHeaderBtn .sub {
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .accBody {
+        padding: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .accBody.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>フットサル記録（Goal / Assist）</h1>
+    </header>
+
+    <main>
+      <!-- 記録入力 -->
+      <section id="view-record" class="card">
+        <p class="muted">
+          日付・場所を選んで、ゴール（右/左/頭）とアシスト、股抜きを記録します。端末内に保存されます。
+        </p>
+
+        <div class="grid">
+          <div>
+            <label>日付</label>
+            <input id="date" type="date" />
+          </div>
+          <div>
+            <label>場所（フットサル場）</label>
+            <select id="place">
+              <option value="" selected disabled>選択してください</option>
+              <!-- options は app.js で動的に入れます -->
+            </select>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label>試合数（1〜20）</label>
+            <select id="matches" aria-label="試合数"></select>
+          </div>
+          <div><!-- 空欄でレイアウト揃え --></div>
+        </div>
+
+        <div class="sep"></div>
+
+        <h2 class="h2">ゴール（0〜20）</h2>
+        <div class="grid3">
+          <div>
+            <label>右足</label>
+            <select id="gRight" aria-label="右足ゴール数"></select>
+          </div>
+          <div>
+            <label>左足</label>
+            <select id="gLeft" aria-label="左足ゴール数"></select>
+          </div>
+          <div>
+            <label>頭</label>
+            <select id="gHead" aria-label="頭ゴール数"></select>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <h2 class="h2">アシスト（0〜20）</h2>
+        <div class="grid">
+          <div>
+            <label>アシスト総数</label>
+            <select id="aTotal" aria-label="アシスト総数"></select>
+          </div>
+          <div>
+            <label id="assistTargetLabel">特定選手へのアシスト数</label>
+            <select id="aToTarget" aria-label="特定選手へのアシスト数"></select>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label>メモ（任意）</label>
+            <input
+              id="memo"
+              type="text"
+              placeholder="例）右サイドからの折り返し多め"
+            />
+          </div>
+          <div>
+            <label>固定カウント対象</label>
+            <select
+              id="assistTargetSelect"
+              aria-label="固定カウント対象選手"
+            ></select>
+            <div class="muted small" style="margin-top: 6px">
+              ※設定画面で対象選手を追加可能（未設定でも保存可）
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <h2 class="h2">股抜き（0〜20）</h2>
+        <div class="grid">
+          <div>
+            <label>股抜き 総数</label>
+            <select id="nutmegsTotal" aria-label="股抜き総数"></select>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div>
+            <label>股抜きゴール</label>
+            <select id="nmGoal" aria-label="股抜きゴール"></select>
+          </div>
+          <div>
+            <label>股抜きASパス</label>
+            <select id="nmAssistPass" aria-label="股抜きアシストパス"></select>
+          </div>
+          <div>
+            <label>股抜きパス</label>
+            <select id="nmPass" aria-label="股抜きパス"></select>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div>
+            <label>股抜きドリブル</label>
+            <select id="nmDribble" aria-label="股抜きドリブル"></select>
+          </div>
+          <div>
+            <label>股抜きのみ</label>
+            <select id="nmOnly" aria-label="股抜きのみ"></select>
+          </div>
+          <div><!-- 空欄でレイアウト揃え --></div>
+        </div>
+
+        <div class="row" style="margin-top: 12px">
+          <button id="saveBtn" class="btn primary" type="button">
+            記録を保存
+          </button>
+          <button id="resetBtn" class="btn ghost" type="button">
+            入力をリセット
+          </button>
+        </div>
+
+        <p id="saveMsg" class="msg hidden"></p>
+      </section>
+
+      <!-- マイページ -->
+      <section id="view-mypage" class="hidden">
+        <div class="card">
+          <div
+            class="row"
+            style="
+              justify-content: space-between;
+              align-items: flex-end;
+              gap: 10px;
+            "
+          >
+            <div style="flex: 1; min-width: 0">
+              <h2 class="h2">マイページ（合計）</h2>
+              <p class="muted">保存済みデータから自動集計します。</p>
+            </div>
+
+            <div style="flex: 0 0 auto">
+              <button id="analysisBtn" class="btn" type="button">
+                データ分析
+              </button>
+            </div>
+          </div>
+
+          <div class="filterBlock">
+            <div class="filterRow2">
+              <div>
+                <label>表示する年月</label>
+                <select id="filterYM"></select>
+              </div>
+              <div>
+                <label>場所</label>
+                <select id="filterPlace">
+                  <option value="">すべて</option>
+                  <!-- options は app.js で動的に入れます -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="kpiGap"></div>
+
+          <div class="kpiStack">
+            <div class="box">
+              <div class="muted">Play日数</div>
+              <div id="kpiPlayDays" class="num">0</div>
+            </div>
+
+            <div class="box">
+              <div class="muted">試合数</div>
+              <div id="kpiMatches" class="num">0</div>
+            </div>
+
+            <div class="box">
+              <div class="muted">ゴール合計</div>
+              <div id="kpiGoals" class="num">0</div>
+              <div class="muted small">
+                右 <span id="kpiGR">0</span> / 左 <span id="kpiGL">0</span> / 頭
+                <span id="kpiGH">0</span>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="muted">アシスト合計</div>
+              <div id="kpiAssists" class="num">0</div>
+              <div class="muted small">
+                対象選手へのアシスト合計 <span id="kpiAI">0</span>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="muted">股抜き計</div>
+              <div id="kpiNutmegs" class="num">0</div>
+              <!-- ★ここを追加（股抜き詳細の合計表示） -->
+              <div class="muted small" style="margin-top: 6px">
+                ゴール <span id="kpiNmGoal">0</span> / ASパス
+                <span id="kpiNmAssistPass">0</span> / パス
+                <span id="kpiNmPass">0</span> / ドリブル
+                <span id="kpiNmDribble">0</span> / のみ
+                <span id="kpiNmOnly">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="mypageMsg" class="msg hidden"></p>
+
+        <div class="card">
+          <div class="centerLine">
+            <h2 class="h2" style="margin: 0">記録一覧（新しい順）</h2>
+          </div>
+          <div class="centerLine muted" style="margin-top: 6px">
+            右上の削除で1件削除。
+          </div>
+
+          <div style="margin-top: 12px">
+            <div class="btnRow">
+              <button id="exportBtn" class="btn">エクスポート(JSON)</button>
+              <button id="importBtn" class="btn">インポート</button>
+              <input
+                id="importFile"
+                type="file"
+                accept="application/json"
+                class="hidden"
+              />
+            </div>
+          </div>
+
+          <div style="margin-top: 14px">
+            <div id="list" class="list"></div>
+          </div>
+
+          <div class="sep"></div>
+          <button id="wipeBtn" class="btn danger">全データ削除（注意）</button>
+          <p class="muted small">
+            ※端末内(LocalStorage)のデータを消します。戻せません。
+          </p>
+        </div>
+      </section>
+
+      <!-- 設定 -->
+      <section id="view-settings" class="hidden">
+        <p id="settingsMsg" class="msg hidden"></p>
+        <div class="card">
+          <h2 class="h2">設定</h2>
+          <p class="muted">
+            アシスト対象選手・場所の選択肢を編集できます（端末内に保存）。
+          </p>
+
+          <div class="sep"></div>
+
+          <h2 class="h2">アシスト対象選手（複数登録）</h2>
+
+          <div class="grid alignBottom">
+            <div>
+              <label>対象選手を追加</label>
+              <input
+                id="newAssistTargetName"
+                type="text"
+                placeholder="例）山田選手"
+              />
+            </div>
+            <div>
+              <label> </label>
+              <button id="addAssistTargetBtn" class="btn" type="button">
+                追加
+              </button>
+            </div>
+          </div>
+
+          <div class="muted small" style="margin-top: 8px">
+            記録画面の「固定カウント対象」セレクトに反映されます。「未設定」は常に選択できます。
+          </div>
+
+          <div id="assistTargetsContainer" class="placeList"></div>
+
+          <div class="sep"></div>
+
+          <h2 class="h2">場所の管理</h2>
+          <div class="grid alignBottom">
+            <div>
+              <label>場所を追加</label>
+              <input
+                id="newPlaceName"
+                type="text"
+                placeholder="例）○○フットサルコート"
+              />
+            </div>
+            <div>
+              <label> </label>
+              <button id="addPlaceBtn" class="btn" type="button">追加</button>
+            </div>
+          </div>
+
+          <div class="muted small" style="margin-top: 8px">
+            ※「その他」は常に最後に表示されます。既定の場所は削除できません（ユーザー追加分のみ削除可）。
+          </div>
+
+          <div id="placesContainer" class="placeList"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabs">
+      <button id="tabRecord" class="tabbtn active">記録</button>
+      <button id="tabMypage" class="tabbtn">マイページ</button>
+      <button id="tabSettings" class="tabbtn">設定</button>
+    </nav>
+
+    <!-- 記録完了モーダル -->
+    <div
+      id="doneModal"
+      class="modalOverlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="記録完了"
+    >
+      <div class="modalCard">
+        <p class="modalTitle">記録完了</p>
+        <p class="muted" style="margin: 0">保存しました。</p>
+        <div style="margin-top: 14px">
+          <button id="closeModalBtn" class="btn primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全データ削除 確認モーダル -->
+    <div
+      id="wipeModal"
+      class="modalOverlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="全データ削除確認"
+    >
+      <div class="modalCard">
+        <p class="modalTitle">本当に削除しますか？</p>
+        <p class="muted" style="margin: 0">
+          端末内の全データを削除します。元に戻せません。
+        </p>
+
+        <div
+          style="
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+          "
+        >
+          <button id="wipeCancelBtn" class="btn">キャンセル</button>
+          <button
+            id="wipeConfirmBtn"
+            class="btn danger"
+            style="width: auto; min-width: 120px"
+          >
+            削除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

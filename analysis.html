@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111827" />
+    <title>データ分析（フットサル記録）</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111827;
+        --muted: #9ca3af;
+        --txt: #e5e7eb;
+        --accent: #22c55e;
+        --line: #243041;
+        --danger: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "Noto Sans JP",
+          sans-serif;
+        background: var(--bg);
+        color: var(--txt);
+      }
+
+      header {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: rgba(11, 18, 32, 0.92);
+        backdrop-filter: blur(6px);
+        z-index: 5;
+      }
+      header .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: space-between;
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      header .sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      main {
+        padding: 16px;
+        max-width: 980px;
+        margin: 0 auto;
+        padding-bottom: 36px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+
+      .btn {
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: #0f172a;
+        color: var(--txt);
+        padding: 10px 12px;
+        border-radius: 14px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .btn.primary {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        border: none;
+        color: #052e16;
+        font-weight: 800;
+      }
+      .btn.ghost {
+        background: transparent;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+      .h2 {
+        font-size: 14px;
+        margin: 0 0 10px;
+      }
+      .sep {
+        height: 1px;
+        background: var(--line);
+        margin: 12px 0;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 740px) {
+        .grid2,
+        .grid3 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* KPI */
+      .kpiStack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .kpiStack .box {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .kpiStack .num {
+        font-size: 22px;
+        font-weight: 900;
+        margin-top: 6px;
+      }
+      .small {
+        font-size: 12px;
+      }
+
+      /* charts */
+      canvas {
+        width: 100%;
+        height: 260px;
+        display: block;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .chartWrap {
+        padding: 10px;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .chartTitleRow {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        margin-right: 6px;
+        vertical-align: -1px;
+      }
+
+      /* table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: #0f172a;
+      }
+      th,
+      td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 13px;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 700;
+        background: rgba(15, 23, 42, 0.6);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .msg {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.4;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        color: #fff;
+      }
+      .msg.hidden {
+        display: none;
+      }
+      /* ===== 対象レコード一覧：日付・場所列（10ch幅で折り返し） ===== */
+      th.col-dateplace,
+      td.col-dateplace {
+        width: 10ch; /* 半角10文字ぶん（YYYY/MM/DD の幅想定） */
+        max-width: 10ch;
+      }
+
+      .datePlaceCell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .datePlaceCell .dp-date {
+        white-space: nowrap; /* 日付は1行固定 */
+        font-weight: 700;
+      }
+
+      .datePlaceCell .dp-place {
+        white-space: normal; /* 場所は折り返しOK */
+        overflow-wrap: anywhere; /* 長い文字列も確実に折り返す */
+        word-break: break-word; /* 日本語/英数混在でも崩れにくく */
+        line-height: 1.35;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="row">
+        <div>
+          <h1>データ分析</h1>
+          <div id="conditionText" class="sub muted"></div>
+        </div>
+        <div style="display: flex; gap: 10px">
+          <button id="reloadBtn" class="btn">再読み込み</button>
+          <button id="backBtn" class="btn ghost">戻る</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <p id="errMsg" class="msg hidden"></p>
+
+      <section class="card">
+        <h2 class="h2">サマリー</h2>
+        <div class="kpiStack">
+          <div class="grid2">
+            <div class="box">
+              <div class="muted">Play日数</div>
+              <div id="kpiPlayDays" class="num">0</div>
+            </div>
+            <div class="box">
+              <div class="muted">試合数</div>
+              <div id="kpiMatches" class="num">0</div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="box">
+              <div class="muted">ゴール合計</div>
+              <div id="kpiGoals" class="num">0</div>
+              <div class="muted small" style="margin-top: 6px">
+                右 <span id="kpiGR">0</span> / 左 <span id="kpiGL">0</span> / 頭
+                <span id="kpiGH">0</span>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="muted">アシスト合計</div>
+              <div id="kpiAssists" class="num">0</div>
+              <div class="muted small" style="margin-top: 6px">
+                固定対象への合計 <span id="kpiAI">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="muted">股抜き計</div>
+            <div id="kpiNutmegs" class="num">0</div>
+            <div class="muted small" style="margin-top: 6px">
+              ゴール <span id="kpiNmGoal">0</span> / ASパス
+              <span id="kpiNmAssistPass">0</span> / パス
+              <span id="kpiNmPass">0</span> / ドリブル
+              <span id="kpiNmDribble">0</span> / のみ
+              <span id="kpiNmOnly">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chartTitleRow">
+          <h2 class="h2" style="margin: 0">
+            日付別トレンド（ゴール / アシスト / 股抜き）
+          </h2>
+          <div class="legend">
+            <span><i class="dot" style="background: #22c55e"></i>ゴール</span>
+            <span><i class="dot" style="background: #60a5fa"></i>アシスト</span>
+            <span><i class="dot" style="background: #f59e0b"></i>股抜き</span>
+          </div>
+        </div>
+        <div class="chartWrap">
+          <canvas id="trendChart"></canvas>
+        </div>
+        <div class="muted small" style="margin-top: 8px">
+          ※同一日付に複数記録がある場合は合算しています。
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="grid2">
+          <div>
+            <div class="chartTitleRow">
+              <h2 class="h2" style="margin: 0">ゴール内訳（右/左/頭）</h2>
+            </div>
+            <div class="chartWrap">
+              <canvas id="goalBreakChart"></canvas>
+            </div>
+          </div>
+          <div>
+            <div class="chartTitleRow">
+              <h2 class="h2" style="margin: 0">股抜き詳細内訳</h2>
+            </div>
+            <div class="chartWrap">
+              <canvas id="nmBreakChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="h2">場所別サマリー（上位）</h2>
+        <div class="muted small" style="margin-bottom: 8px">
+          ※場所を「すべて」で分析しているときに特に有効です。
+        </div>
+        <div style="overflow: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>場所</th>
+                <th>Play日数</th>
+                <th>試合数</th>
+                <th>ゴール</th>
+                <th>アシスト</th>
+                <th>股抜き</th>
+              </tr>
+            </thead>
+            <tbody id="placeTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="h2">対象レコード一覧</h2>
+        <div style="overflow: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>日付・場所</th>
+                <th>試合数</th>
+                <th>ゴール</th>
+                <th>アシスト</th>
+                <th>股抜き</th>
+                <th>メモ</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="analysis.js"></script>
+  </body>
+</html>
