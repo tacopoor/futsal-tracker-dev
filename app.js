@@ -1130,12 +1130,49 @@ closeDoneModal();
 closeWipeModal();
 
 /* ====== tab deep-link (from analysis etc.) ====== */
+
+// ★ここに追加
+function applyHashFiltersToMypage() {
+  const hash = (location.hash || "").replace(/^#/, "");
+  const sp = new URLSearchParams(hash);
+
+  const tab = (sp.get("tab") || "").toLowerCase();
+  if (tab !== "mypage") return;
+
+  const ym = (sp.get("ym") || "").trim();
+  const place = (sp.get("place") || "").trim();
+
+  if (filterYM && ym) {
+    const exists = [...filterYM.options].some((o) => o.value === ym);
+    if (exists) filterYM.value = ym;
+  }
+
+  if (filterPlace) {
+    if (place === "") {
+      filterPlace.value = "";
+    } else {
+      const exists = [...filterPlace.options].some((o) => o.value === place);
+      if (exists) filterPlace.value = place;
+    }
+  }
+}
+
+// ★applyHashTab を拡張
 function applyHashTab() {
   const hash = (location.hash || "").toLowerCase();
   if (hash.includes("tab=mypage")) showTab("mypage");
   else if (hash.includes("tab=settings")) showTab("settings");
   else if (hash.includes("tab=record")) showTab("record");
+
+  // ★フィルタ復元
+  applyHashFiltersToMypage();
+
+  // ★復元後に再描画
+  if (hash.includes("tab=mypage")) {
+    renderMypage();
+  }
 }
+
 window.addEventListener("hashchange", applyHashTab);
 
 /* boot */
@@ -1156,23 +1193,24 @@ window.addEventListener("hashchange", applyHashTab);
 
 /* ====== Data analysis button ====== */
 function openAnalysisPage() {
-  // マイページの現在フィルタを取得（存在しない場合にも壊れないように）
-  const ym = (filterYM?.value || "").trim(); // "2026-02" or ""(すべて)
+  const ym = (filterYM?.value || "").trim(); // "all" / "YYYY" / "YYYY-MM"
   const place = (filterPlace?.value || "").trim(); // "" = すべて
 
   const params = new URLSearchParams();
-  // ym は「すべて」の場合は空になっている想定（必要なら "all" にしてもOK）
   if (ym) params.set("ym", ym);
   if (place) params.set("place", place);
 
-  // ※将来、他の条件も渡したくなったらここに追加できます
-  // ★戻り先を判別できるよう returnTo を付ける（analysis.js 側で使う）
-  params.set("returnTo", "mypage");
+  // ★戻り先URLを明示（ym/place 付きで返す）
+  const backParams = new URLSearchParams();
+  backParams.set("tab", "mypage");
+  if (ym) backParams.set("ym", ym);
+  if (place) backParams.set("place", place);
 
-  const url = `analysis.html${params.toString() ? "?" + params.toString() : ""}`;
+  // index.html に戻ったときにハッシュだけでなく ym/place も渡す
+  // 例: ./index.html#tab=mypage&ym=2026&place=体育館
+  params.set("back", `./index.html#${backParams.toString()}`);
 
-  // ★PWAで安定：同一画面で遷移（別タブ/別ウィンドウにしない）
-  location.href = url;
+  location.href = `analysis.html${params.toString() ? "?" + params.toString() : ""}`;
 }
 
 analysisBtn?.addEventListener("click", () => {

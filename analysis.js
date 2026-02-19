@@ -617,10 +617,17 @@ function render() {
 function init() {
   reloadBtn?.addEventListener("click", () => location.reload());
   backBtn?.addEventListener("click", () => {
-    // returnTo=mypage が来ていればマイページへ、それ以外は index へ
     const sp = new URLSearchParams(location.search);
-    const returnTo = (sp.get("returnTo") || "").trim();
 
+    // ★back があれば最優先でそこへ戻る（フィルタ維持）
+    const back = (sp.get("back") || "").trim();
+    if (back) {
+      location.href = back;
+      return;
+    }
+
+    // 既存ロジック（保険）
+    const returnTo = (sp.get("returnTo") || "").trim();
     if (returnTo === "mypage") location.href = "./index.html#tab=mypage";
     else if (returnTo === "settings")
       location.href = "./index.html#tab=settings";
