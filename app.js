@@ -1059,6 +1059,7 @@ placesContainer.addEventListener("click", (e) => {
 });
 
 /* ====== Init ====== */
+buildCountSelect(elGT);
 buildCountSelect(elGR);
 buildCountSelect(elGL);
 buildCountSelect(elGH);
