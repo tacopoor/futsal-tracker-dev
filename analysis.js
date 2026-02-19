@@ -523,29 +523,28 @@ function drawGroupedBarsNoInnerGap(
   h,
   labels,
   series,
-  { padding = 34, gapBetweenGroups = 4, showValues = true } = {},
+  { padding = 34, showValues = true } = {},
 ) {
   clearChart(ctx, w, h);
   drawAxes(ctx, w, h, { padding });
 
-  const usableW = w - padding - 10;
   const usableH = h - padding - 10;
 
   const nGroups = labels.length;
   if (nGroups === 0) return;
 
-  const nSeries = series.length;
+  const nSeries = series.length; // 3想定
   const maxV = Math.max(
     1,
     ...series.flatMap((s) => s.values.map((v) => Number(v) || 0)),
   );
 
-  const gap = gapBetweenGroups;
+  // ===== ★ 固定サイズ指定 =====
+  const barW = 14; // ← 棒1本の幅（固定）
+  const innerGap = 2; // ← 棒と棒の間
+  const groupGap = 10; // ← 日付グループ間の間隔
 
-  const groupW = (usableW - gap * (nGroups + 1)) / nGroups;
-
-  // ★ 棒幅を1/3にする
-  const barW = groupW / nSeries / 3;
+  const groupW = nSeries * barW + (nSeries - 1) * innerGap;
 
   ctx.save();
   ctx.font =
@@ -554,16 +553,13 @@ function drawGroupedBarsNoInnerGap(
   ctx.textAlign = "center";
 
   for (let i = 0; i < nGroups; i++) {
-    const baseX = padding + gap + i * (groupW + gap);
+    const baseX = padding + groupGap + i * (groupW + groupGap);
 
     for (let s = 0; s < nSeries; s++) {
       const v = Number(series[s].values[i] || 0);
       const barH = (v / maxV) * usableH;
 
-      // ★ グループ中央基準で配置
-      const groupCenter = baseX + groupW / 2;
-
-      const x = groupCenter - (nSeries / 2) * barW + s * barW;
+      const x = baseX + s * (barW + innerGap);
 
       const y = 10 + (usableH - barH);
 
@@ -571,7 +567,7 @@ function drawGroupedBarsNoInnerGap(
       ctx.fillStyle = series[s].color;
       ctx.fillRect(x, y, barW, barH);
 
-      // ★ 数値を棒の中央上に表示
+      // value（中央上）
       if (showValues && v > 0) {
         ctx.fillStyle = "rgba(255,255,255,0.95)";
         ctx.fillText(String(v), x + barW / 2, y - 4);
@@ -581,8 +577,12 @@ function drawGroupedBarsNoInnerGap(
 
   ctx.restore();
 
-  // ★ Xラベルをグループ中央に表示
-  drawXLabelsCentered(ctx, w, h, labels, { padding, groupW, gap });
+  // ===== Xラベルも中央固定 =====
+  drawXLabelsCentered(ctx, w, h, labels, {
+    padding,
+    groupW,
+    gap: groupGap,
+  });
 }
 
 function drawXLabelsCentered(ctx, w, h, labels, { padding, groupW, gap }) {
