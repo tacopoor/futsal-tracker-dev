@@ -125,7 +125,21 @@ function readParams() {
 function filterRecords(all, { ym, place }) {
   return all.filter((r) => {
     if (!r || !r.date || !r.place) return false;
-    if (ym && ymOfDate(r.date) !== ym) return false;
+
+    // ym:
+    // ""        => all
+    // "YYYY"    => year
+    // "YYYY-MM" => month
+    if (ym) {
+      if (/^\d{4}$/.test(ym)) {
+        // 年フィルタ
+        if (!String(r.date).startsWith(ym + "-")) return false;
+      } else {
+        // 月フィルタ（従来）
+        if (ymOfDate(r.date) !== ym) return false;
+      }
+    }
+
     if (place && r.place !== place) return false;
     return true;
   });
@@ -396,7 +410,11 @@ function drawBarChart(
 
 /* ====== Rendering ====== */
 function renderCondition({ ym, place }, totalCount) {
-  const ymText = ym ? ym : "すべて";
+  let ymText = "すべて";
+  if (ym) {
+    if (/^\d{4}$/.test(ym)) ymText = `${ym}年`;
+    else ymText = ym;
+  }
   const placeText = place ? place : "すべて";
   conditionText.textContent = `表示条件：年月 ${ymText} / 場所 ${placeText}（対象 ${totalCount} 件）`;
 }

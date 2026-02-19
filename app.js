@@ -502,23 +502,39 @@ function getYMLabel(ym) {
 function buildYMOptions(records, preferValue = "") {
   if (!filterYM) return;
 
+  // すべての YYYY-MM を抽出
   const yms = uniq(
     records
       .map((r) => String(r?.date || "").slice(0, 7))
       .filter((v) => /^\d{4}-\d{2}$/.test(v)),
-  ).sort((a, b) => b.localeCompare(a));
+  ).sort((a, b) => b.localeCompare(a)); // 新しい月が上
 
-  const currentYM = nowYM();
-  const final = yms.includes(currentYM) ? yms : [currentYM, ...yms];
+  // 年を抽出（YYYY）
+  const years = uniq(yms.map((ym) => ym.slice(0, 4))).sort((a, b) =>
+    b.localeCompare(a),
+  );
+
+  // 表示用ラベル
+  const yearLabel = (y) => `${y}年`;
+  const ymLabel = (ym) => {
+    const [y, m] = ym.split("-");
+    return `${y}年${Number(m)}月`;
+  };
 
   let html = `<option value="all">すべて</option>`;
-  html += final
-    .map((ym) => `<option value="${ym}">${getYMLabel(ym)}</option>`)
+
+  // 年 → 月 の順で追加
+  html += years
+    .map((y) => `<option value="${y}">${yearLabel(y)}</option>`)
+    .join("");
+  html += yms
+    .map((ym) => `<option value="${ym}">${ymLabel(ym)}</option>`)
     .join("");
 
   filterYM.innerHTML = html;
 
-  let next = currentYM;
+  // 選択状態の復元
+  let next = "all";
   if (preferValue) {
     const exists = [...filterYM.options].some((o) => o.value === preferValue);
     if (exists) next = preferValue;
@@ -528,21 +544,33 @@ function buildYMOptions(records, preferValue = "") {
 
 /* ====== Filters ====== */
 function applyFilters(records) {
-  const ym = (filterYM?.value || "").trim(); // "YYYY-MM" or "all"
+  const ym = (filterYM?.value || "").trim(); // "YYYY-MM" or "YYYY" or "all"
   const p = filterPlace.value || "";
 
   return records.filter((r) => {
     if (!r?.date) return false;
 
+    const rYM = String(r.date).slice(0, 7); // YYYY-MM
+    const rY = String(r.date).slice(0, 4); // YYYY
+
+    // 年月フィルタ
     if (ym && ym !== "all") {
-      const rYM = String(r.date).slice(0, 7);
-      if (rYM !== ym) return false;
+      if (/^\d{4}-\d{2}$/.test(ym)) {
+        // 月指定
+        if (rYM !== ym) return false;
+      } else if (/^\d{4}$/.test(ym)) {
+        // 年指定
+        if (rY !== ym) return false;
+      }
     }
 
+    // 場所フィルタ
     if (p && r.place !== p) return false;
+
     return true;
   });
 }
+
 filterYM?.addEventListener("change", renderMypage);
 filterPlace.addEventListener("change", renderMypage);
 
@@ -747,6 +775,14 @@ function renderList(records, { openYM, showMonthSummary = false } = {}) {
     .join("");
 }
 
+function latestYMInYear(records, year) {
+  const yms = records
+    .map((r) => String(r?.date || "").slice(0, 7))
+    .filter((ym) => /^\d{4}-\d{2}$/.test(ym) && ym.startsWith(year + "-"))
+    .sort((a, b) => b.localeCompare(a)); // 新しい月が先頭
+  return yms[0] || "";
+}
+
 function renderMypage() {
   msgClear(mypageMsgEl);
 
@@ -763,14 +799,22 @@ function renderMypage() {
   const filtered = applyFilters(all);
   renderKPIs(filtered);
 
-  const selectedYM = (filterYM?.value || "").trim();
+  const selectedYM = (filterYM?.value || "").trim(); // all / YYYY / YYYY-MM
 
   if (selectedYM === "all") {
     renderList(filtered, {
-      openYM: nowYM(), // 「すべて」は現在月だけ開く
-      showMonthSummary: true, // ★月ヘッダ合計を表示
+      openYM: nowYM(), // 「すべて」は現在月を開く
+      showMonthSummary: true,
+    });
+  } else if (/^\d{4}$/.test(selectedYM)) {
+    // ★「年」選択：その年の最新月を自動で開く
+    const openYM = latestYMInYear(filtered, selectedYM) || nowYM();
+    renderList(filtered, {
+      openYM,
+      showMonthSummary: false,
     });
   } else {
+    // 月選択（YYYY-MM）
     renderList(filtered, {
       openYM: selectedYM || nowYM(),
       showMonthSummary: false,
