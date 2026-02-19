@@ -557,6 +557,7 @@ function renderKPIs(records) {
   let gr = 0,
     gl = 0,
     gh = 0,
+    goalSum = 0,
     at = 0,
     ai = 0,
     nm = 0;
@@ -573,6 +574,9 @@ function renderKPIs(records) {
     gr += r.goals?.right ?? 0;
     gl += r.goals?.left ?? 0;
     gh += r.goals?.head ?? 0;
+
+    // ★合計は「総数があれば総数、なければ内訳合計」
+    goalSum += sumGoals(r);
 
     at += r.assists?.total ?? 0;
     ai += r.assists?.toTarget ?? r.assists?.toPivo ?? 0;
@@ -595,7 +599,7 @@ function renderKPIs(records) {
   kpiGR.textContent = gr;
   kpiGL.textContent = gl;
   kpiGH.textContent = gh;
-  kpiGoals.textContent = gr + gl + gh;
+  kpiGoals.textContent = goalSum;
 
   kpiAssists.textContent = at;
   kpiAI.textContent = ai;
