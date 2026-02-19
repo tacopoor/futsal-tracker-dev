@@ -854,7 +854,7 @@ function renderRecordsItems(recordsInGroup) {
             </div>
 
             <div class="itemActions">
-              <button class="btn small" data-action="edit" data-id="${r.id}">修正</button>
+              <button class="btn small editBtn" data-action="edit" data-id="${r.id}">修正</button>
             </div>
           </div>
 
