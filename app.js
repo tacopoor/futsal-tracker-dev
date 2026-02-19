@@ -217,7 +217,7 @@ const elDate = document.getElementById("date");
 const elPlace = document.getElementById("place");
 const elMatches = document.getElementById("matches");
 
-const elGT = document.getElementById("gTotal"); 
+const elGT = document.getElementById("gTotal");
 const elGR = document.getElementById("gRight");
 const elGL = document.getElementById("gLeft");
 const elGH = document.getElementById("gHead");
@@ -489,7 +489,7 @@ saveBtn.addEventListener("click", () => {
 
   resetForm();
   openDoneModal();
-};);
+});
 
 /* ====== filterYM options ====== */
 function getYMLabel(ym) {
