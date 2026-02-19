@@ -529,7 +529,6 @@ function drawGroupedBarsNoInnerGap(
   const rawMaxV = Math.max(
     1,
     ...series.flatMap((s) => s.values.map((v) => Number(v) || 0)),
-    r,
   );
 
   // ★ 余裕 15%（好みで 1.1〜1.3）
@@ -566,7 +565,7 @@ function drawGroupedBarsNoInnerGap(
       // value（中央上）
       if (showValues && v > 0) {
         ctx.fillStyle = "rgba(255,255,255,0.95)";
-        ctx.fillText(String(v), x + barW / 2, y - 4);
+        ctx.fillText(String(v), x + barW / 2, Math.max(top + 12, y - 4));
       }
     }
   }
