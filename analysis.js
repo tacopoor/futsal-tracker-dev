@@ -363,16 +363,15 @@ function clearChart(ctx, w, h) {
   // bg is CSS; do nothing
 }
 
-function drawAxes(ctx, w, h, { padding = 34 } = {}) {
-  // axes: left & bottom
+function drawAxes(ctx, w, h, { padding = 34, top = 10 } = {}) {
   ctx.save();
   ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = "rgba(156,163,175,0.35)"; // muted-ish
+  ctx.strokeStyle = "rgba(156,163,175,0.35)";
   ctx.lineWidth = 1;
 
   // y axis
   ctx.beginPath();
-  ctx.moveTo(padding, 10);
+  ctx.moveTo(padding, top);
   ctx.lineTo(padding, h - padding);
   ctx.stroke();
 
@@ -383,13 +382,20 @@ function drawAxes(ctx, w, h, { padding = 34 } = {}) {
   ctx.stroke();
 
   ctx.restore();
-  return { padding };
+  return { padding, top };
 }
 
-function drawLineSeries(ctx, w, h, { xs, ys, color, padding = 34, maxY }) {
+function drawLineSeries(
+  ctx,
+  w,
+  h,
+  { xs, ys, color, padding = 34, top = 10, maxY },
+) {
   if (!xs.length) return;
+
   const usableW = w - padding - 10;
-  const usableH = h - padding - 10;
+  const usableH = h - padding - top;
+
   const minX = 0;
   const maxX = Math.max(1, xs.length - 1);
 
@@ -402,7 +408,7 @@ function drawLineSeries(ctx, w, h, { xs, ys, color, padding = 34, maxY }) {
     const xNorm = (i - minX) / (maxX - minX || 1);
     const yNorm = (ys[i] || 0) / (maxY || 1);
     const x = padding + xNorm * usableW;
-    const y = 10 + (1 - yNorm) * usableH;
+    const y = top + (1 - yNorm) * usableH;
 
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
@@ -415,11 +421,12 @@ function drawLineSeries(ctx, w, h, { xs, ys, color, padding = 34, maxY }) {
     const xNorm = (i - minX) / (maxX - minX || 1);
     const yNorm = (ys[i] || 0) / (maxY || 1);
     const x = padding + xNorm * usableW;
-    const y = 10 + (1 - yNorm) * usableH;
+    const y = top + (1 - yNorm) * usableH;
     ctx.beginPath();
     ctx.arc(x, y, 2.5, 0, Math.PI * 2);
     ctx.fill();
   }
+
   ctx.restore();
 }
 
@@ -507,18 +514,26 @@ function drawGroupedBarsNoInnerGap(
   { padding = 34, showValues = true } = {},
 ) {
   clearChart(ctx, w, h);
-  drawAxes(ctx, w, h, { padding });
+  // ★ 数値表示も考慮して上に余白を作る
+  const top = 22; // 数値(12px) + 余裕。好みで 18〜28 くらい
+  drawAxes(ctx, w, h, { padding, top });
 
-  const usableH = h - padding - 10;
+  // usableH も top を反映
+  const usableH = h - padding - top;
 
   const nGroups = labels.length;
   if (nGroups === 0) return;
 
   const nSeries = series.length; // 3想定
-  const maxV = Math.max(
+  // maxV に “ヘッドルーム” を持たせる（天井ギリギリを避ける）
+  const rawMaxV = Math.max(
     1,
     ...series.flatMap((s) => s.values.map((v) => Number(v) || 0)),
+    r,
   );
+
+  // ★ 余裕 15%（好みで 1.1〜1.3）
+  const maxV = rawMaxV * 1.15;
 
   // ===== ★ 固定サイズ指定 =====
   const barW = 14; // ← 棒1本の幅（固定）
@@ -542,7 +557,7 @@ function drawGroupedBarsNoInnerGap(
 
       const x = baseX + s * (barW + innerGap);
 
-      const y = 10 + (usableH - barH);
+      const y = top + (usableH - barH);
 
       // bar
       ctx.fillStyle = series[s].color;
