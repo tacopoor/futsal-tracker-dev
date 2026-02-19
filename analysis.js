@@ -337,44 +337,25 @@ function setupCanvas(canvas) {
   return { ctx, w, h };
 }
 
-// ★横スクロール用：canvas の “見た目幅(style.width)” をデータ数に応じて伸ばし、
-// 内部の描画解像度(canvas.width/height)も合わせる
-function setupScrollableCanvas(
-  canvas,
-  { minGroupPx = 22, gap = 8, padding = 34 } = {},
-) {
+// ★横スクロール用
+function setupScrollableCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
 
-  // 親要素（chartScroll / chartWrap）幅を基準にする
   const parent = canvas.parentElement;
-  const parentRect = parent
-    ? parent.getBoundingClientRect()
-    : canvas.getBoundingClientRect();
+  const parentRect = parent.getBoundingClientRect();
+
   const viewW = Math.max(300, Math.floor(parentRect.width));
+  const cssH = 260;
 
-  // データ数（renderTrendChart で dataset.count を入れている前提）
-  const count = Math.max(0, Number(canvas.dataset.count || "0"));
-
-  // 1グループ(=1記録)あたりの最低幅 + グループ間ギャップで必要幅を見積もる
-  // 3本バーなので、minGroupPx は「グループ全体の幅」扱い
-  const neededW =
-    count > 0 ? padding + 10 + gap + count * (minGroupPx + gap) : viewW;
-
-  const cssW = Math.max(viewW, Math.floor(neededW));
-  const cssH = 260; // analysis.html の canvas 高さに合わせる
-
-  // ★見た目の幅（ここが横スクロールの要）
-  canvas.style.width = `${cssW}px`;
+  // 横幅はここでは決めない（重要）
   canvas.style.height = `${cssH}px`;
-
-  // ★内部解像度
-  canvas.width = Math.floor(cssW * dpr);
+  canvas.width = Math.floor(viewW * dpr);
   canvas.height = Math.floor(cssH * dpr);
 
   const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scaleの二重掛け防止
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  return { ctx, w: cssW, h: cssH };
+  return { ctx, w: viewW, h: cssH };
 }
 
 function clearChart(ctx, w, h) {
@@ -636,17 +617,32 @@ function renderKPIsToDom(kpis) {
 }
 
 function renderTrendChart(rows) {
-  // 横スクロール用：データ数を canvas に渡す
-  trendCanvas.dataset.count = String(rows.length);
-
-  // ★スクロール対応 setup
-  const { ctx, w, h } = setupScrollableCanvas(trendCanvas, {
-    minGroupPx: 22, // 1記録あたりの最低幅（好みで調整）
-    gap: 8,
-  });
-
-  // ★ラベル
   const labels = buildTrendLabels(rows);
+
+  const nGroups = labels.length;
+  const nSeries = 3;
+
+  const barW = 14;
+  const innerGap = 2;
+  const groupGap = 10;
+  const padding = 34;
+
+  const groupW = nSeries * barW + (nSeries - 1) * innerGap;
+
+  // ★ 横幅を正しく計算（これが抜けていた）
+  const totalW = padding + groupGap + nGroups * (groupW + groupGap);
+
+  const cssH = 260;
+  const dpr = window.devicePixelRatio || 1;
+
+  // ★ ここが最重要
+  trendCanvas.style.width = `${totalW}px`;
+  trendCanvas.style.height = `${cssH}px`;
+  trendCanvas.width = Math.floor(totalW * dpr);
+  trendCanvas.height = Math.floor(cssH * dpr);
+
+  const ctx = trendCanvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const goals = rows.map((r) => r.goals);
   const assists = rows.map((r) => r.assists);
@@ -654,19 +650,16 @@ function renderTrendChart(rows) {
 
   drawGroupedBarsNoInnerGap(
     ctx,
-    w,
-    h,
+    totalW,
+    cssH,
     labels,
     [
-      { name: "Goals", values: goals, color: "rgba(34,197,94,0.85)" }, // 緑
-      { name: "Assists", values: assists, color: "rgba(96,165,250,0.85)" }, // 青
-      { name: "Nutmegs", values: nutmegs, color: "rgba(245,158,11,0.85)" }, // 黄
+      { name: "Goals", values: goals, color: "rgba(34,197,94,0.85)" },
+      { name: "Assists", values: assists, color: "rgba(96,165,250,0.85)" },
+      { name: "Nutmegs", values: nutmegs, color: "rgba(245,158,11,0.85)" },
     ],
-    { padding: 34, gapBetweenGroups: 8, showValues: true },
+    { padding, showValues: true },
   );
-
-  // ついで：表示領域の先頭にスクロール戻し（好み）
-  // document.getElementById("trendScroll")?.scrollTo({ left: 0 });
 }
 
 function renderGoalBreak(kpis) {
