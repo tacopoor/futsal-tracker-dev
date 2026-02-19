@@ -19,6 +19,19 @@ const DEFAULT_PLACES = [
   "その他",
 ];
 
+/* ====== Play video tags ====== */
+const VIDEO_TAGS = [
+  "ゴール",
+  "アシスト",
+  "股抜き",
+  "ベストゴール",
+  "ベストアシスト",
+  "ナイス連携",
+  "Good Play",
+  "Bad Play",
+  "その他",
+];
+
 function loadRecords() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -235,6 +248,10 @@ const elNmPass = document.getElementById("nmPass");
 const elNmDribble = document.getElementById("nmDribble");
 const elNmOnly = document.getElementById("nmOnly");
 
+/* ====== Play video inputs ====== */
+const videoInputs = document.getElementById("videoInputs");
+const addVideoBtn = document.getElementById("addVideoBtn");
+
 const saveBtn = document.getElementById("saveBtn");
 const resetBtn = document.getElementById("resetBtn");
 
@@ -352,6 +369,116 @@ wipeModal?.addEventListener("click", (e) => {
   if (e.target === wipeModal) closeWipeModal();
 });
 
+/* ====== Play映像登録 helpers ====== */
+const VIDEO_MIN_ROWS = 3;
+const VIDEO_MAX_ROWS = 10;
+
+function videoTagOptionsHtml(selected = "") {
+  return VIDEO_TAGS.map((t) => {
+    const sel = t === selected ? " selected" : "";
+    return `<option value="${escapeHtml(t)}"${sel}>${escapeHtml(t)}</option>`;
+  }).join("");
+}
+
+function createVideoRow(
+  { url = "", tag = "その他" } = {},
+  { removable = true } = {},
+) {
+  const row = document.createElement("div");
+  row.className = "videoRow";
+
+  // URL input
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.placeholder = "https://...（YouTube等）";
+  urlInput.className = "videoUrl";
+  urlInput.value = url;
+
+  // Tag select
+  const tagSelect = document.createElement("select");
+  tagSelect.className = "videoTag";
+  tagSelect.innerHTML = videoTagOptionsHtml(tag);
+
+  row.appendChild(urlInput);
+  row.appendChild(tagSelect);
+
+  // Delete button（最小3件は削除させない運用にするなら removable=false）
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "btn danger videoDelBtn";
+  delBtn.textContent = "×";
+
+  delBtn.addEventListener("click", () => {
+    // 最低行数を下回らないようにする
+    const count = videoInputs?.querySelectorAll(".videoRow").length || 0;
+    if (count <= VIDEO_MIN_ROWS) return;
+
+    row.remove();
+    updateAddVideoBtnState();
+  });
+
+  if (removable) row.appendChild(delBtn);
+
+  return row;
+}
+
+function updateAddVideoBtnState() {
+  const count = videoInputs?.querySelectorAll(".videoRow").length || 0;
+  if (addVideoBtn) {
+    addVideoBtn.disabled = count >= VIDEO_MAX_ROWS;
+  }
+}
+
+function ensureVideoRows(minCount = VIDEO_MIN_ROWS) {
+  if (!videoInputs) return;
+  const cur = videoInputs.querySelectorAll(".videoRow").length;
+  for (let i = cur; i < minCount; i++) {
+    // 初期は「その他」にしておく
+    videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }));
+  }
+  updateAddVideoBtnState();
+}
+
+function clearAndInitVideoRows(defaultCount = VIDEO_MIN_ROWS) {
+  if (!videoInputs) return;
+  videoInputs.innerHTML = "";
+  ensureVideoRows(defaultCount);
+}
+
+function collectVideosFromUI() {
+  if (!videoInputs) return [];
+  const rows = [...videoInputs.querySelectorAll(".videoRow")];
+
+  const videos = rows
+    .map((row) => {
+      const url = (row.querySelector("input.videoUrl")?.value || "").trim();
+      const tag =
+        (row.querySelector("select.videoTag")?.value || "その他").trim() ||
+        "その他";
+      return { url, tag };
+    })
+    // URLが空の行は保存しない（空行が残っててもOK）
+    .filter((v) => v.url);
+
+  return videos;
+}
+
+function loadVideosToUI(videos = []) {
+  if (!videoInputs) return;
+
+  videoInputs.innerHTML = "";
+
+  const src = Array.isArray(videos) ? videos : [];
+  for (const v of src.slice(0, VIDEO_MAX_ROWS)) {
+    videoInputs.appendChild(
+      createVideoRow({ url: v.url || "", tag: v.tag || "その他" }),
+    );
+  }
+
+  // 既存が少ない場合は最低3行まで埋める
+  ensureVideoRows(VIDEO_MIN_ROWS);
+}
+
 /* ====== Build select options ====== */
 function buildCountSelect(el, { min = 0, max = 20, defaultValue = 0 } = {}) {
   if (!el) return;
@@ -419,10 +546,24 @@ function resetForm() {
   elNmDribble.value = "0";
   elNmOnly.value = "0";
 
+  // ★Play映像入力も初期化（3行）
+  clearAndInitVideoRows(3);
+
   // リセットしたら修正モード解除
   setEditMode(false);
 }
 resetBtn.addEventListener("click", resetForm);
+
+/* ====== Play映像：追加ボタン ====== */
+addVideoBtn?.addEventListener("click", () => {
+  if (!videoInputs) return;
+
+  const count = videoInputs.querySelectorAll(".videoRow").length;
+  if (count >= VIDEO_MAX_ROWS) return;
+
+  videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }));
+  updateAddVideoBtnState();
+});
 
 /* ====== Nutmegs validation ====== */
 function validateNutmegs(total, details) {
@@ -494,6 +635,9 @@ function loadRecordToForm(record) {
     elNmDribble.value = String(d.dribble ?? 0);
     elNmOnly.value = String(d.only ?? 0);
   }
+
+  // ★Play映像（編集時に復元）
+  loadVideosToUI(record.playVideos || []);
 
   elMemo.value = record.memo || "";
 
@@ -579,6 +723,7 @@ saveBtn.addEventListener("click", () => {
       details: nutDetails,
     },
     memo: elMemo.value.trim(),
+    playVideos: collectVideosFromUI(),
   };
 
   const records = loadRecords();
