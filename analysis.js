@@ -523,7 +523,7 @@ function drawGroupedBarsNoInnerGap(
   h,
   labels,
   series,
-  { padding = 34, gapBetweenGroups = 12, showValues = true } = {},
+  { padding = 34, gapBetweenGroups = 4, showValues = true } = {},
 ) {
   clearChart(ctx, w, h);
   drawAxes(ctx, w, h, { padding });
