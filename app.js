@@ -406,7 +406,7 @@ saveBtn.addEventListener("click", () => {
   if (!place)
     return msgError(recordMsgEl, "場所（フットサル場）を選択してください。");
 
-  // ===== ゴール整合性チェック（★追加） =====
+  // ===== ゴール整合性チェック（修正版） =====
   const goalsTotal = n(elGT?.value);
   const goalsRight = n(elGR.value);
   const goalsLeft = n(elGL.value);
@@ -414,7 +414,10 @@ saveBtn.addEventListener("click", () => {
 
   const goalsBreakSum = goalsRight + goalsLeft + goalsHead;
 
-  if (goalsTotal !== goalsBreakSum) {
+  // ★ 内訳が1つでも入力されている場合のみチェック
+  const hasGoalBreakdown = goalsRight > 0 || goalsLeft > 0 || goalsHead > 0;
+
+  if (hasGoalBreakdown && goalsTotal !== goalsBreakSum) {
     return msgError(
       recordMsgEl,
       `ゴール総数（${goalsTotal}）と内訳合計（右${goalsRight}+左${goalsLeft}+頭${goalsHead}=${goalsBreakSum}）が一致しません。修正してください。`,
@@ -489,7 +492,7 @@ saveBtn.addEventListener("click", () => {
 
   resetForm();
   openDoneModal();
-});
+};);
 
 /* ====== filterYM options ====== */
 function getYMLabel(ym) {
