@@ -137,6 +137,11 @@ const nmBreakCanvas = document.getElementById("nmBreakChart");
 const placeTableBody = document.getElementById("placeTableBody");
 const recordsTbody = document.getElementById("recordsTbody");
 
+// ===== URL list DOM =====
+const urlTagFilter = document.getElementById("urlTagFilter");
+const urlTableBody = document.getElementById("urlTableBody");
+const urlCountText = document.getElementById("urlCountText");
+
 const reloadBtn = document.getElementById("reloadBtn");
 const backBtn = document.getElementById("backBtn");
 
@@ -852,6 +857,95 @@ function renderRecordsTable(records) {
   if (countEl) countEl.textContent = `（${records.length}件）`;
 }
 
+function isValidHttpUrl(s) {
+  const v = String(s || "").trim();
+  return /^https?:\/\//i.test(v);
+}
+
+// filteredRecords（指定期間）から playVideos を取り出して平坦化
+function collectUrlsFromRecords(filteredRecords) {
+  const rows = [];
+
+  for (const r of filteredRecords) {
+    const arr = Array.isArray(r?.playVideos) ? r.playVideos : [];
+    for (const v of arr) {
+      const tag = (v?.tag || "その他").trim() || "その他";
+      const url = (v?.url || "").trim();
+      if (!isValidHttpUrl(url)) continue;
+
+      rows.push({
+        tag,
+        url,
+        date: r?.date || "",
+        createdAt: r?.createdAt || "",
+      });
+    }
+  }
+
+  // 表示を安定化：新しい記録のURLを上へ（date+createdAt desc）
+  rows.sort((a, b) =>
+    (b.date + b.createdAt).localeCompare(a.date + a.createdAt),
+  );
+
+  return rows;
+}
+
+function uniq(arr) {
+  return [...new Set(arr)];
+}
+
+function renderUrlTable(rows, selectedTag = "") {
+  if (!urlTableBody || !urlTagFilter) return;
+
+  const filtered =
+    selectedTag && selectedTag !== "all"
+      ? rows.filter((x) => x.tag === selectedTag)
+      : rows;
+
+  if (urlCountText) {
+    urlCountText.textContent = `表示 ${filtered.length} 件 / 全 ${rows.length} 件`;
+  }
+
+  if (filtered.length === 0) {
+    urlTableBody.innerHTML = `<tr><td colspan="2" class="muted">URLがありません。</td></tr>`;
+    return;
+  }
+
+  urlTableBody.innerHTML = filtered
+    .map(
+      (x) => `
+      <tr>
+        <td><span class="tagBadge">${escapeHtml(x.tag)}</span></td>
+        <td class="urlCell">
+          <a href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer">
+            ${escapeHtml(x.url)}
+          </a>
+        </td>
+      </tr>
+    `,
+    )
+    .join("");
+}
+
+function buildUrlTagFilterOptions(rows, prefer = "all") {
+  if (!urlTagFilter) return;
+
+  const tags = uniq(rows.map((x) => x.tag)).sort((a, b) =>
+    a.localeCompare(b, "ja"),
+  );
+
+  // "all" = すべて
+  urlTagFilter.innerHTML =
+    `<option value="all">すべて</option>` +
+    tags
+      .map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+      .join("");
+
+  // 選択復元
+  const exists = [...urlTagFilter.options].some((o) => o.value === prefer);
+  urlTagFilter.value = exists ? prefer : "all";
+}
+
 /* ====== Main ====== */
 function render() {
   clearError();
@@ -878,6 +972,20 @@ function render() {
   renderPlaceTable(filtered);
   renderRecordsTable(filtered);
   renderYearSummaryTable(all);
+
+  // ===== URL一覧（指定期間）=====
+  const urlRows = collectUrlsFromRecords(filtered);
+
+  buildUrlTagFilterOptions(urlRows, urlTagFilter?.value || "all");
+  renderUrlTable(urlRows, urlTagFilter?.value || "all");
+
+  if (urlTagFilter && !urlTagFilter.__bound) {
+    urlTagFilter.__bound = true;
+    urlTagFilter.addEventListener("change", () => {
+      // フィルタ選択は保持されるので再描画でOK
+      render();
+    });
+  }
 }
 
 function init() {

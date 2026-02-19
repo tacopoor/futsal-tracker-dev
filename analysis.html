@@ -285,6 +285,38 @@
       .accBody {
         padding-top: 10px;
       }
+      /* ===== URL list ===== */
+      .filterRow {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .select {
+        background: #0f172a;
+        color: var(--txt);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      .urlCell a {
+        color: #93c5fd;
+        text-decoration: underline;
+        word-break: break-all;
+      }
+      .tagBadge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: rgba(34, 197, 94, 0.18);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #bbf7d0;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -458,6 +490,34 @@
             </thead>
             <tbody id="yearSummaryTbody"></tbody>
           </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chartTitleRow">
+          <h2 class="h2" style="margin: 0">URL一覧（指定期間）</h2>
+          <div class="muted small" id="urlCountText"></div>
+        </div>
+
+        <div class="filterRow">
+          <div class="muted small">タグで絞り込み：</div>
+          <select id="urlTagFilter" class="select"></select>
+        </div>
+
+        <div style="overflow: auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 12ch">タグ</th>
+                <th>URL</th>
+              </tr>
+            </thead>
+            <tbody id="urlTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="muted small" style="margin-top: 8px">
+          ※リンクは別タブで開きます。
         </div>
       </section>
     </main>
