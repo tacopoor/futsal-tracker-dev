@@ -137,6 +137,9 @@ const nmBreakCanvas = document.getElementById("nmBreakChart");
 const placeTableBody = document.getElementById("placeTableBody");
 const recordsTbody = document.getElementById("recordsTbody");
 
+// ===== Average table =====
+const avgTableBody = document.getElementById("avgTableBody");
+
 // ===== URL list DOM =====
 const urlTagFilter = document.getElementById("urlTagFilter");
 const urlTableBody = document.getElementById("urlTableBody");
@@ -696,6 +699,50 @@ function renderKPIsToDom(kpis) {
   kpiNmOnly.textContent = String(kpis.nutmegs.details.only);
 }
 
+function formatAvg(x) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return "0";
+
+  const rounded = Math.round(v * 10) / 10; // 小数1桁に丸め
+  return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1);
+}
+
+function renderAverageTable(records) {
+  if (!avgTableBody) return;
+
+  // 指定期間の合計試合数（matches合計）
+  const matchesTotal = records.reduce((sum, r) => sum + getMatches(r), 0);
+
+  // 指定期間の合計値
+  const goalsTotal = records.reduce((sum, r) => sum + sumGoals(r), 0);
+  const assistsTotal = records.reduce(
+    (sum, r) => sum + (r.assists?.total ?? 0),
+    0,
+  );
+  const nutTotal = records.reduce((sum, r) => sum + getNutTotal(r), 0);
+
+  const denom = Math.max(1, matchesTotal); // 0除算回避（試合数0なら1扱い）
+
+  const rows = [
+    { label: "ゴール", total: goalsTotal, avg: goalsTotal / denom },
+    { label: "アシスト", total: assistsTotal, avg: assistsTotal / denom },
+    { label: "股抜き", total: nutTotal, avg: nutTotal / denom },
+  ];
+
+  avgTableBody.innerHTML = rows
+    .map(
+      (x) => `
+      <tr>
+        <td>${escapeHtml(x.label)}</td>
+        <td>${x.total}</td>
+        <td>${matchesTotal}</td>
+        <td>${formatAvg(x.avg)}</td>
+      </tr>
+    `,
+    )
+    .join("");
+}
+
 function renderTrendChart(rows) {
   const labels = buildTrendLabels(rows);
 
@@ -962,6 +1009,9 @@ function render() {
 
   const kpis = calcKPIs(filtered);
   renderKPIsToDom(kpis);
+
+  // ★Averageテーブル（指定期間）
+  renderAverageTable(filtered);
 
   const trendRows = buildCumulativeRowsPerRecord(filtered);
   renderTrendChart(trendRows);
