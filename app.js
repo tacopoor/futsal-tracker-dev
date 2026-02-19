@@ -238,6 +238,34 @@ const elNmOnly = document.getElementById("nmOnly");
 const saveBtn = document.getElementById("saveBtn");
 const resetBtn = document.getElementById("resetBtn");
 
+/* ====== Edit state ====== */
+let editingId = null; // null なら新規、id が入っていれば修正中
+
+/* ====== Record Delete Button (edit only) ====== */
+// HTMLにボタンが無い場合でも動くように生成する
+let recordDeleteBtn = document.getElementById("recordDeleteBtn");
+if (!recordDeleteBtn && resetBtn) {
+  recordDeleteBtn = document.createElement("button");
+  recordDeleteBtn.id = "recordDeleteBtn";
+  recordDeleteBtn.type = "button";
+  recordDeleteBtn.className = "btn danger"; // 既存のbtnクラスに合わせる
+  recordDeleteBtn.textContent = "削除";
+  recordDeleteBtn.classList.add("hidden");
+
+  // 「入力をリセット」ボタンの下（同じ親の末尾）に置く
+  resetBtn.parentElement?.appendChild(recordDeleteBtn);
+}
+
+// 編集モード時だけ削除ボタンを出す
+function setEditMode(on) {
+  if (on) {
+    recordDeleteBtn?.classList.remove("hidden");
+  } else {
+    recordDeleteBtn?.classList.add("hidden");
+    editingId = null;
+  }
+}
+
 /* ====== Elements: MyPage ====== */
 const kpiGoals = document.getElementById("kpiGoals");
 const kpiAssists = document.getElementById("kpiAssists");
@@ -280,18 +308,34 @@ const placesContainer = document.getElementById("placesContainer");
 /* ====== Modals ====== */
 const doneModal = document.getElementById("doneModal");
 const closeModalBtn = document.getElementById("closeModalBtn");
+const doneModalTitle = document.getElementById("doneModalTitle");
+const doneModalText = document.getElementById("doneModalText");
 
 const wipeModal = document.getElementById("wipeModal");
 const wipeCancelBtn = document.getElementById("wipeCancelBtn");
 const wipeConfirmBtn = document.getElementById("wipeConfirmBtn");
 
 /* ====== Modal helpers ====== */
-function openDoneModal() {
+let doneModalAfterClose = null;
+
+function openDoneModal(
+  title = "記録完了",
+  text = "保存しました。",
+  afterClose = null,
+) {
+  if (doneModalTitle) doneModalTitle.textContent = title;
+  if (doneModalText) doneModalText.textContent = text;
+  doneModalAfterClose = typeof afterClose === "function" ? afterClose : null;
   doneModal.classList.remove("hidden");
 }
+
 function closeDoneModal() {
   doneModal.classList.add("hidden");
+  const fn = doneModalAfterClose;
+  doneModalAfterClose = null;
+  if (fn) fn();
 }
+
 function openWipeModal() {
   wipeModal.classList.remove("hidden");
 }
@@ -374,6 +418,9 @@ function resetForm() {
   elNmPass.value = "0";
   elNmDribble.value = "0";
   elNmOnly.value = "0";
+
+  // リセットしたら修正モード解除
+  setEditMode(false);
 }
 resetBtn.addEventListener("click", resetForm);
 
@@ -391,6 +438,69 @@ function validateNutmegs(total, details) {
     return { ok: false, sum: detailSum };
   }
   return { ok: true, sum: detailSum };
+}
+
+function loadRecordToForm(record) {
+  if (!record) return;
+
+  editingId = record.id;
+  setEditMode(true);
+
+  // タブ移動（まず記録画面を出す）
+  showTab("record");
+  location.hash = "#tab=record"; // 任意（戻ったときにタブ維持したい場合）
+
+  // 値を流し込み
+  elDate.value = record.date || "";
+  elPlace.value = record.place || "";
+
+  if (elMatches) elMatches.value = String(record.matches ?? 1);
+
+  // goals
+  const g = record.goals || {};
+  if (elGT) elGT.value = String(g.total ?? 0);
+  elGR.value = String(g.right ?? 0);
+  elGL.value = String(g.left ?? 0);
+  elGH.value = String(g.head ?? 0);
+
+  // assists
+  const a = record.assists || {};
+  elAT.value = String(a.total ?? 0);
+  elAToTarget.value = String(a.toTarget ?? 0);
+
+  // 対象選手
+  const tName = (a.targetName || UNSET).trim() || UNSET;
+  if ([...assistTargetSelect.options].some((o) => o.value === tName)) {
+    assistTargetSelect.value = tName;
+  } else {
+    assistTargetSelect.value = UNSET;
+  }
+
+  // nutmegs
+  const nm = record.nutmegs || {};
+  if (typeof nm === "number") {
+    elNutTotal.value = String(nm);
+    elNmGoal.value = "0";
+    elNmAssistPass.value = "0";
+    elNmPass.value = "0";
+    elNmDribble.value = "0";
+    elNmOnly.value = "0";
+  } else {
+    elNutTotal.value = String(nm.total ?? 0);
+    const d = nm.details || {};
+    elNmGoal.value = String(d.goal ?? 0);
+    elNmAssistPass.value = String(d.assistPass ?? 0);
+    elNmPass.value = String(d.pass ?? 0);
+    elNmDribble.value = String(d.dribble ?? 0);
+    elNmOnly.value = String(d.only ?? 0);
+  }
+
+  elMemo.value = record.memo || "";
+
+  msgInfo(
+    recordMsgEl,
+    `修正モード：${formatDate(record.date)} / ${record.place}`,
+  );
 }
 
 /* ====== Save record ====== */
@@ -472,17 +582,44 @@ saveBtn.addEventListener("click", () => {
   };
 
   const records = loadRecords();
-  records.push(record);
-  saveRecords(records);
+
+  if (editingId) {
+    // 更新：同じIDを探して置換
+    const idx = records.findIndex((r) => r.id === editingId);
+    if (idx >= 0) {
+      // createdAt は保持したい場合は維持（必要なら）
+      record.id = editingId;
+      record.createdAt = records[idx].createdAt || record.createdAt;
+      record.updatedAt = new Date().toISOString();
+      records[idx] = record;
+    } else {
+      // 見つからない場合は新規扱いにフォールバック
+      records.push(record);
+    }
+    saveRecords(records);
+
+    msgInfo(
+      recordMsgEl,
+      `更新しました：${formatDate(record.date)} / ${record.place}` +
+        `（試合数 ${record.matches}、ゴール ${sumGoals(record)}、アシスト ${record.assists.total} / ${record.assists.targetName} ${record.assists.toTarget}、股抜き ${record.nutmegs.total}）`,
+    );
+
+    // 更新後は編集モード解除
+    setEditMode(false);
+  } else {
+    // 新規
+    records.push(record);
+    saveRecords(records);
+
+    msgInfo(
+      recordMsgEl,
+      `保存しました：${formatDate(record.date)} / ${record.place}` +
+        `（試合数 ${record.matches}、ゴール ${sumGoals(record)}、アシスト ${record.assists.total} / ${record.assists.targetName} ${record.assists.toTarget}、股抜き ${record.nutmegs.total}）`,
+    );
+  }
 
   settings.selectedAssistTarget = selectedTarget;
   saveSettings(settings);
-
-  msgInfo(
-    recordMsgEl,
-    `保存しました：${formatDate(record.date)} / ${record.place}` +
-      `（試合数 ${record.matches}、ゴール ${sumGoals(record)}、アシスト ${record.assists.total} / ${selectedTarget} ${record.assists.toTarget}、股抜き ${record.nutmegs.total}）`,
-  );
 
   // 年月候補が増える可能性がある
   if (filterYM) {
@@ -492,6 +629,42 @@ saveBtn.addEventListener("click", () => {
 
   resetForm();
   openDoneModal();
+});
+
+recordDeleteBtn?.addEventListener("click", () => {
+  msgClear(recordMsgEl);
+
+  if (!editingId) return;
+
+  const records = loadRecords();
+  const target = records.find((r) => r.id === editingId);
+  if (!target) {
+    msgError(recordMsgEl, "削除対象データが見つかりません。");
+    setEditMode(false);
+    return;
+  }
+
+  const next = records.filter((r) => r.id !== editingId);
+  saveRecords(next);
+
+  // 画面下メッセージ（任意：残してOK）
+  msgInfo(
+    recordMsgEl,
+    `該当データを削除しました：${formatDate(target.date)} / ${target.place}`,
+  );
+
+  // 年月候補の更新（必要なら）
+  if (filterYM) buildYMOptions(next, filterYM.value);
+
+  // フォームを初期化＆編集解除
+  resetForm();
+  setEditMode(false);
+
+  // ★ここが今回の要件：削除モーダルを出して、OK押下でマイページへ
+  openDoneModal("削除完了", "削除しました。", () => {
+    showTab("mypage");
+    location.hash = "#tab=mypage"; // 任意（URLにも反映したいなら）
+  });
 });
 
 /* ====== filterYM options ====== */
@@ -681,7 +854,7 @@ function renderRecordsItems(recordsInGroup) {
             </div>
 
             <div class="itemActions">
-              <button class="btn danger small" data-action="delete" data-id="${r.id}">削除</button>
+              <button class="btn small" data-action="edit" data-id="${r.id}">修正</button>
             </div>
           </div>
 
@@ -860,22 +1033,21 @@ list.addEventListener("click", (e) => {
     return;
   }
 
-  // 削除
-  const delBtn = e.target.closest("button[data-action='delete']");
-  if (!delBtn) return;
+  // 修正
+  const editBtn = e.target.closest("button[data-action='edit']");
+  if (!editBtn) return;
 
-  const id = delBtn.dataset.id;
-  const beforeYM = filterYM?.value || "";
+  const id = editBtn.dataset.id;
+  const records = loadRecords();
+  const record = records.find((r) => r.id === id);
 
-  const records = loadRecords().filter((r) => r.id !== id);
-  saveRecords(records);
+  if (!record) return;
 
-  msgInfo(mypageMsgEl, "1件削除しました。");
+  // 修正モードで記録ページへ
+  loadRecordToForm(record);
 
-  if (filterYM) {
-    buildYMOptions(records, beforeYM);
-  }
-  renderMypage();
+  // ここで return するのが重要
+  return;
 });
 
 /* ====== Wipe all records ====== */
