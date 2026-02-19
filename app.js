@@ -560,9 +560,18 @@ addVideoBtn?.addEventListener("click", () => {
   const count = videoInputs.querySelectorAll(".videoRow").length;
   if (count >= VIDEO_MAX_ROWS) return;
 
-  videoInputs.appendChild(
-    createVideoRow({ url: "", tag: "その他" }, { removable: false }),
-  );
+  addVideoBtn?.addEventListener("click", () => {
+    if (!videoInputs) return;
+
+    const count = videoInputs.querySelectorAll(".videoRow").length;
+    if (count >= VIDEO_MAX_ROWS) return;
+
+    // ★追加する行は必ず4行目以降扱いになるので count をrowIndexとして渡す
+    videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }, count));
+
+    updateAddVideoBtnState();
+  });
+
   updateAddVideoBtnState();
 });
 
