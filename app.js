@@ -380,21 +380,16 @@ function videoTagOptionsHtml(selected = "") {
   }).join("");
 }
 
-function createVideoRow(
-  { url = "", tag = "その他" } = {},
-  { removable = true } = {},
-) {
+function createVideoRow({ url = "", tag = "その他" } = {}, rowIndex = 0) {
   const row = document.createElement("div");
   row.className = "videoRow";
 
-  // URL input
   const urlInput = document.createElement("input");
   urlInput.type = "url";
   urlInput.placeholder = "https://...（YouTube等）";
   urlInput.className = "videoUrl";
   urlInput.value = url;
 
-  // Tag select
   const tagSelect = document.createElement("select");
   tagSelect.className = "videoTag";
   tagSelect.innerHTML = videoTagOptionsHtml(tag);
@@ -402,22 +397,26 @@ function createVideoRow(
   row.appendChild(urlInput);
   row.appendChild(tagSelect);
 
-  // Delete button（最小3件は削除させない運用にするなら removable=false）
   const delBtn = document.createElement("button");
   delBtn.type = "button";
   delBtn.className = "btn danger videoDelBtn";
   delBtn.textContent = "×";
 
   delBtn.addEventListener("click", () => {
-    // 最低行数を下回らないようにする
-    const count = videoInputs?.querySelectorAll(".videoRow").length || 0;
-    if (count <= VIDEO_MIN_ROWS) return;
+    const rows = [...videoInputs.querySelectorAll(".videoRow")];
+    const index = rows.indexOf(row);
+
+    // ★先頭3行は削除不可
+    if (index < VIDEO_MIN_ROWS) return;
 
     row.remove();
     updateAddVideoBtnState();
   });
 
-  if (removable) row.appendChild(delBtn);
+  // ★4行目以降だけ × を表示（0始まりなので 3 以上）
+  if (rowIndex >= VIDEO_MIN_ROWS) {
+    row.appendChild(delBtn);
+  }
 
   return row;
 }
@@ -434,7 +433,7 @@ function ensureVideoRows(minCount = VIDEO_MIN_ROWS) {
   const cur = videoInputs.querySelectorAll(".videoRow").length;
   for (let i = cur; i < minCount; i++) {
     // 初期は「その他」にしておく
-    videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }));
+    videoInputs.appendChild(createVideoRow({ url: "", tag: "その他" }, i));
   }
   updateAddVideoBtnState();
 }
@@ -469,11 +468,11 @@ function loadVideosToUI(videos = []) {
   videoInputs.innerHTML = "";
 
   const src = Array.isArray(videos) ? videos : [];
-  for (const v of src.slice(0, VIDEO_MAX_ROWS)) {
+  src.slice(0, VIDEO_MAX_ROWS).forEach((v, idx) => {
     videoInputs.appendChild(
-      createVideoRow({ url: v.url || "", tag: v.tag || "その他" }),
+      createVideoRow({ url: v.url || "", tag: v.tag || "その他" }, idx),
     );
-  }
+  });
 
   // 既存が少ない場合は最低3行まで埋める
   ensureVideoRows(VIDEO_MIN_ROWS);
