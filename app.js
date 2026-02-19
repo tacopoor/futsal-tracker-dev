@@ -969,6 +969,37 @@ function groupByYM(records) {
   return { map, yms };
 }
 
+/* ===== Play映像：マイページ表示用 ===== */
+function renderPlayVideosHtml(r) {
+  const arr = Array.isArray(r?.playVideos) ? r.playVideos : [];
+  const cleaned = arr
+    .map((v) => ({
+      tag: (v?.tag || "その他").trim() || "その他",
+      url: (v?.url || "").trim(),
+    }))
+    .filter((v) => /^https?:\/\//i.test(v.url)); // URLがあるものだけ表示
+
+  if (cleaned.length === 0) return "";
+
+  // URL文字列は escapeして表示（hrefはそのまま入れるが安全寄りにしたければ後述のバリデーション追加）
+  return `
+    <div class="videoLinks">
+      ${cleaned
+        .map(
+          (v) => `
+          <div class="videoLine">
+            <span class="tagBadge">${escapeHtml(v.tag)}</span>
+            <a class="videoUrlLink" href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer">
+              ${escapeHtml(v.url)}
+            </a>
+          </div>
+        `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderRecordsItems(recordsInGroup) {
   const sorted = [...recordsInGroup].sort((a, b) =>
     (b.date + b.createdAt).localeCompare(a.date + a.createdAt),
@@ -996,6 +1027,7 @@ function renderRecordsItems(recordsInGroup) {
                 アシスト：${r.assists.total}（${escapeHtml(tName)} ${tCount}） /
                 股抜き：${nm}
               </div>
+              ${renderPlayVideosHtml(r)}
             </div>
 
             <div class="itemActions">

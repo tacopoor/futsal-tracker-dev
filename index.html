@@ -226,6 +226,42 @@
         padding: 8px 12px;
         border-radius: 12px;
       }
+      /* ===== Play映像（マイページ表示） ===== */
+      .videoLinks {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px; /* 複数行の間隔 */
+      }
+
+      .videoLine {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap; /* URLが長い場合に折り返し */
+      }
+
+      .tagBadge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #374151; /* 濃い灰色 */
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .videoUrlLink {
+        color: #e5e7eb; /* 白寄り */
+        text-decoration: underline;
+        font-size: 12px;
+        word-break: break-all;
+      }
+      .videoUrlLink:hover {
+        opacity: 0.9;
+      }
+
       /* マイページ：修正ボタンを青背景＋白文字 */
       .editBtn {
         background: #2563eb; /* 青 */
