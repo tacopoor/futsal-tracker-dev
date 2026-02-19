@@ -152,6 +152,24 @@
         border: 1px solid var(--line);
         border-radius: 16px;
       }
+      /* ===== 横スクロール（トレンドだけ） ===== */
+      .chartScroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* 重要：全canvas共通の width:100% を、トレンドだけ解除する */
+      #trendChart.scrollCanvas {
+        width: auto; /* ←これがないとJSで横に伸ばせない */
+        min-width: 100%; /* 少ないデータのときは領域いっぱい */
+      }
+
+      /* （任意）スクロール時に角丸が欠けるのが気になる場合 */
+      .chartScroll {
+        border-radius: 16px;
+      }
+
       .chartWrap {
         padding: 10px;
         background: #0f172a;
@@ -321,11 +339,11 @@
             <span><i class="dot" style="background: #f59e0b"></i>股抜き</span>
           </div>
         </div>
-        <div class="chartWrap">
-          <canvas id="trendChart"></canvas>
+        <div class="chartWrap chartScroll">
+          <canvas id="trendChart" class="scrollCanvas"></canvas>
         </div>
         <div class="muted small" style="margin-top: 8px">
-          ※同一日付に複数記録がある場合は合算しています。
+          ※保存した「記録」ごとの累計を表示します（同じ日付でも記録が複数あれば棒が複数出ます）。
         </div>
       </section>
 

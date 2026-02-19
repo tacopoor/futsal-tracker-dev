@@ -19,6 +19,29 @@ function formatDate(iso) {
   const [y, m, d] = String(iso).split("-");
   return `${y}/${m}/${d}`;
 }
+
+function labelMMDD(iso) {
+  if (!iso) return "";
+  const m = String(iso).slice(5, 7);
+  const d = String(iso).slice(8, 10);
+  return `${Number(m)}/${Number(d)}`; // "02/18" ではなく "2/18"
+}
+
+// mode:
+//  - "mmdd": 2/18
+//  - "mmdd_seq": 2/18(1) のように同日連番
+function buildTrendLabels(rows, mode = "mmdd") {
+  const seq = new Map(); // date -> count
+  return rows.map((r) => {
+    const base = labelMMDD(r.date);
+    if (mode !== "mmdd_seq") return base;
+
+    const c = (seq.get(r.date) || 0) + 1;
+    seq.set(r.date, c);
+    return `${base}(${c})`;
+  });
+}
+
 function getGoalTotal(r) {
   const g = r?.goals || {};
   if (typeof g.total === "number" && Number.isFinite(g.total) && g.total >= 0) {
@@ -218,6 +241,33 @@ function groupByDate(records) {
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/* ====== Cumulative trend (per record) ====== */
+function buildCumulativeRowsPerRecord(records) {
+  // 古い→新しい（同日なら createdAt で安定化）
+  const sorted = [...records].sort((a, b) =>
+    ((a.date || "") + (a.createdAt || "")).localeCompare(
+      (b.date || "") + (b.createdAt || ""),
+    ),
+  );
+
+  let g = 0;
+  let a = 0;
+  let nm = 0;
+
+  return sorted.map((r) => {
+    g += sumGoals(r);
+    a += r.assists?.total ?? 0;
+    nm += getNutTotal(r);
+
+    return {
+      date: r.date,
+      goals: g,
+      assists: a,
+      nutmegs: nm,
+    };
+  });
+}
+
 function groupByPlace(records) {
   const map = new Map();
   for (const r of records) {
@@ -408,6 +458,73 @@ function drawBarChart(
   ctx.restore();
 }
 
+function drawGroupedBarsNoInnerGap(
+  ctx,
+  w,
+  h,
+  labels,
+  series, // [{ name, values[], color }]
+  { padding = 34, gapBetweenGroups = 8, showValues = true } = {},
+) {
+  clearChart(ctx, w, h);
+  drawAxes(ctx, w, h, { padding });
+
+  const usableW = w - padding - 10;
+  const usableH = h - padding - 10;
+
+  const nGroups = labels.length;
+  if (nGroups === 0) return;
+
+  const nSeries = series.length; // 3想定
+  const maxV = Math.max(
+    1,
+    ...series.flatMap((s) => s.values.map((v) => Number(v) || 0)),
+  );
+
+  const gap =
+    nGroups > 80 ? 2 : nGroups > 40 ? 4 : Math.max(4, gapBetweenGroups);
+
+  const groupW = (usableW - gap * (nGroups + 1)) / nGroups;
+  const barW = groupW / nSeries; // ★3本は隙間0
+
+  ctx.save();
+  ctx.font =
+    "12px system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif";
+  ctx.textBaseline = "bottom";
+
+  for (let i = 0; i < nGroups; i++) {
+    const baseX = padding + gap + i * (groupW + gap);
+
+    for (let s = 0; s < nSeries; s++) {
+      const v = Number(series[s].values[i] || 0);
+      const barH = (v / maxV) * usableH;
+      const x = baseX + s * barW;
+      const y = 10 + (usableH - barH);
+
+      // bar
+      ctx.fillStyle = series[s].color;
+      ctx.fillRect(x, y, barW, barH);
+
+      // value (棒の上)
+      if (showValues && v > 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        // 棒が低いときは内側に入れない（上に出す）
+        const textY = Math.max(14, y - 2);
+        // 文字が潰れる場合の保険：細い時は出さない
+        if (barW >= 10) {
+          ctx.fillText(String(v), x + 2, textY);
+        }
+      }
+    }
+  }
+
+  ctx.restore();
+
+  // Xラベル（間引き）
+  const step = nGroups <= 10 ? 1 : nGroups <= 20 ? 2 : nGroups <= 40 ? 4 : 8;
+  drawXLabels(ctx, w, h, labels, { padding, step });
+}
+
 /* ====== Rendering ====== */
 function renderCondition({ ym, place }, totalCount) {
   let ymText = "すべて";
@@ -440,40 +557,38 @@ function renderKPIsToDom(kpis) {
 }
 
 function renderTrendChart(rows) {
-  const { ctx, w, h } = setupCanvas(trendCanvas);
-  clearChart(ctx, w, h);
-  drawAxes(ctx, w, h, { padding: 34 });
+  // 横スクロール用：データ数を canvas に渡す
+  trendCanvas.dataset.count = String(rows.length);
 
-  const labels = rows.map((r) => String(r.date).slice(5)); // "MM-DD" くらい
+  // ★スクロール対応 setup
+  const { ctx, w, h } = setupScrollableCanvas(trendCanvas, {
+    minGroupPx: 22, // 1記録あたりの最低幅（好みで調整）
+    gap: 8,
+  });
+
+  // ★ラベル：どちらか選んでください
+  // const labels = buildTrendLabels(rows, "mmdd");      // 2/18
+  const labels = buildTrendLabels(rows, "mmdd_seq"); // 2/18(1)
+
   const goals = rows.map((r) => r.goals);
   const assists = rows.map((r) => r.assists);
   const nutmegs = rows.map((r) => r.nutmegs);
 
-  const maxY = Math.max(1, ...goals, ...assists, ...nutmegs);
+  drawGroupedBarsNoInnerGap(
+    ctx,
+    w,
+    h,
+    labels,
+    [
+      { name: "Goals", values: goals, color: "rgba(34,197,94,0.85)" }, // 緑
+      { name: "Assists", values: assists, color: "rgba(96,165,250,0.85)" }, // 青
+      { name: "Nutmegs", values: nutmegs, color: "rgba(245,158,11,0.85)" }, // 黄
+    ],
+    { padding: 34, gapBetweenGroups: 8, showValues: true },
+  );
 
-  // lines (colors are chosen to match legend)
-  drawLineSeries(ctx, w, h, {
-    xs: labels,
-    ys: goals,
-    color: "#22c55e",
-    maxY,
-  });
-  drawLineSeries(ctx, w, h, {
-    xs: labels,
-    ys: assists,
-    color: "#60a5fa",
-    maxY,
-  });
-  drawLineSeries(ctx, w, h, {
-    xs: labels,
-    ys: nutmegs,
-    color: "#f59e0b",
-    maxY,
-  });
-
-  // x labels (sparse)
-  const step = rows.length <= 10 ? 1 : rows.length <= 20 ? 2 : 4;
-  drawXLabels(ctx, w, h, labels, { step });
+  // ついで：表示領域の先頭にスクロール戻し（好み）
+  // document.getElementById("trendScroll")?.scrollTo({ left: 0 });
 }
 
 function renderGoalBreak(kpis) {
@@ -604,8 +719,8 @@ function render() {
   const kpis = calcKPIs(filtered);
   renderKPIsToDom(kpis);
 
-  const byDate = groupByDate(filtered);
-  renderTrendChart(byDate);
+  const trendRows = buildCumulativeRowsPerRecord(filtered);
+  renderTrendChart(trendRows);
 
   renderGoalBreak(kpis);
   renderNutBreak(kpis);
