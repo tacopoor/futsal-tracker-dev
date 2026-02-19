@@ -414,28 +414,26 @@
       </section>
 
       <section class="card">
-        <details id="recordsAccordion" class="acc" open="false">
-          <summary class="accSummary">
-            <span>対象レコード一覧</span>
+        <details id="recordsAccordion">
+          <summary class="h2">
+            対象レコード一覧
             <span id="recordsCountText" class="muted small"></span>
           </summary>
 
-          <div class="accBody" style="margin-top: 10px">
-            <div style="overflow: auto">
-              <table>
-                <thead>
-                  <tr>
-                    <th class="col-dateplace">日付・場所</th>
-                    <th>試合数</th>
-                    <th>ゴール</th>
-                    <th>アシスト</th>
-                    <th>股抜き</th>
-                    <th>メモ</th>
-                  </tr>
-                </thead>
-                <tbody id="recordsTbody"></tbody>
-              </table>
-            </div>
+          <div style="overflow: auto; margin-top: 10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>日付・場所</th>
+                  <th>試合数</th>
+                  <th>ゴール</th>
+                  <th>アシスト</th>
+                  <th>股抜き</th>
+                  <th>メモ</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTbody"></tbody>
+            </table>
           </div>
         </details>
       </section>

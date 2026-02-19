@@ -326,7 +326,6 @@ function groupByPlace(records) {
 
 // ===== 年別集計（全期間） =====
 function buildYearSummary(allRecords) {
-  // year => sums
   const map = new Map();
 
   for (const r of allRecords) {
@@ -338,7 +337,7 @@ function buildYearSummary(allRecords) {
     if (!map.has(year)) {
       map.set(year, {
         year,
-        dates: new Set(), // Play日数用
+        playDays: 0, // ★ 登録件数として数える
         matches: 0,
         goals: 0,
         assists: 0,
@@ -347,24 +346,15 @@ function buildYearSummary(allRecords) {
     }
 
     const row = map.get(year);
-    row.dates.add(r.date);
+    row.playDays += 1; // ★ 1レコード = 1
     row.matches += getMatches(r);
     row.goals += sumGoals(r);
     row.assists += r.assists?.total ?? 0;
     row.nutmegs += getNutTotal(r);
   }
 
-  const arr = [...map.values()].map((x) => ({
-    year: x.year,
-    playDays: x.dates.size,
-    matches: x.matches,
-    goals: x.goals,
-    assists: x.assists,
-    nutmegs: x.nutmegs,
-  }));
-
-  // 最新年 → 古い年
-  arr.sort((a, b) => b.year.localeCompare(a.year));
+  const arr = [...map.values()];
+  arr.sort((a, b) => b.year.localeCompare(a.year)); // 最新年→古い年
   return arr;
 }
 
