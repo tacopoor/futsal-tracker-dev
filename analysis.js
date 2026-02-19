@@ -19,10 +19,18 @@ function formatDate(iso) {
   const [y, m, d] = String(iso).split("-");
   return `${y}/${m}/${d}`;
 }
-function sumGoals(r) {
+function getGoalTotal(r) {
   const g = r?.goals || {};
+  if (typeof g.total === "number" && Number.isFinite(g.total) && g.total >= 0) {
+    return g.total;
+  }
   return (g.right ?? 0) + (g.left ?? 0) + (g.head ?? 0);
 }
+
+function sumGoals(r) {
+  return getGoalTotal(r);
+}
+
 function getNutTotal(r) {
   const nm = r?.nutmegs;
   if (typeof nm === "number") return nm;
@@ -131,6 +139,7 @@ function calcKPIs(records) {
   let gr = 0,
     gl = 0,
     gh = 0,
+    goalsTotal = 0,
     assists = 0,
     assistsToTarget = 0,
     nmTotal = 0;
@@ -144,6 +153,7 @@ function calcKPIs(records) {
   for (const r of records) {
     matches += getMatches(r);
 
+    goalsTotal += getGoalTotal(r);
     gr += r.goals?.right ?? 0;
     gl += r.goals?.left ?? 0;
     gh += r.goals?.head ?? 0;
@@ -164,7 +174,7 @@ function calcKPIs(records) {
   return {
     playDays: uniqueDates.size,
     matches,
-    goals: { total: gr + gl + gh, right: gr, left: gl, head: gh },
+    goals: { total: goalsTotal, right: gr, left: gl, head: gh },
     assists: { total: assists, toTarget: assistsToTarget },
     nutmegs: {
       total: nmTotal,

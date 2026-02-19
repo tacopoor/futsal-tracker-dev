@@ -84,9 +84,20 @@ function formatDate(iso) {
   const [y, m, d] = iso.split("-");
   return `${y}/${m}/${d}`;
 }
-function sumGoals(r) {
-  return (r.goals?.right ?? 0) + (r.goals?.left ?? 0) + (r.goals?.head ?? 0);
+function getGoalTotal(r) {
+  const g = r?.goals || {};
+  // 新形式（goals.total）があれば優先
+  if (typeof g.total === "number" && Number.isFinite(g.total) && g.total >= 0) {
+    return g.total;
+  }
+  // 旧形式（right/left/head の合算）
+  return (g.right ?? 0) + (g.left ?? 0) + (g.head ?? 0);
 }
+
+function sumGoals(r) {
+  return getGoalTotal(r);
+}
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll("&", "&amp;")
@@ -206,6 +217,7 @@ const elDate = document.getElementById("date");
 const elPlace = document.getElementById("place");
 const elMatches = document.getElementById("matches");
 
+const elGT = document.getElementById("gTotal"); 
 const elGR = document.getElementById("gRight");
 const elGL = document.getElementById("gLeft");
 const elGH = document.getElementById("gHead");
@@ -348,6 +360,8 @@ function resetForm() {
 
   if (elMatches) elMatches.value = "1";
 
+  if (elGT) elGT.value = "0";
+
   elGR.value = "0";
   elGL.value = "0";
   elGH.value = "0";
@@ -392,6 +406,21 @@ saveBtn.addEventListener("click", () => {
   if (!place)
     return msgError(recordMsgEl, "場所（フットサル場）を選択してください。");
 
+  // ===== ゴール整合性チェック（★追加） =====
+  const goalsTotal = n(elGT?.value);
+  const goalsRight = n(elGR.value);
+  const goalsLeft = n(elGL.value);
+  const goalsHead = n(elGH.value);
+
+  const goalsBreakSum = goalsRight + goalsLeft + goalsHead;
+
+  if (goalsTotal !== goalsBreakSum) {
+    return msgError(
+      recordMsgEl,
+      `ゴール総数（${goalsTotal}）と内訳合計（右${goalsRight}+左${goalsLeft}+頭${goalsHead}=${goalsBreakSum}）が一致しません。修正してください。`,
+    );
+  }
+
   const selectedTarget = (assistTargetSelect.value || "").trim() || UNSET;
 
   const assistsTotal = n(elAT.value);
@@ -422,9 +451,10 @@ saveBtn.addEventListener("click", () => {
     place,
     matches,
     goals: {
-      right: n(elGR.value),
-      left: n(elGL.value),
-      head: n(elGH.value),
+      total: goalsTotal,
+      right: goalsRight,
+      left: goalsLeft,
+      head: goalsHead,
     },
     assists: {
       total: assistsTotal,
@@ -459,7 +489,7 @@ saveBtn.addEventListener("click", () => {
 
   resetForm();
   openDoneModal();
-});
+};);
 
 /* ====== filterYM options ====== */
 function getYMLabel(ym) {
