@@ -622,7 +622,9 @@ function init() {
     // ★back があれば最優先でそこへ戻る（フィルタ維持）
     const back = (sp.get("back") || "").trim();
     if (back) {
-      location.href = back;
+      // URLSearchParams は自動でデコードしてくれることもありますが、
+      // エンコード済みで来る環境があるので安全側で decode する
+      location.href = decodeURIComponent(back);
       return;
     }
 
