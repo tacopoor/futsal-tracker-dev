@@ -29,16 +29,35 @@ function labelMMDD(iso) {
 
 // mode:
 //  - "mmdd": 2/18
-//  - "mmdd_seq": 2/18(1) のように同日連番
-function buildTrendLabels(rows, mode = "mmdd") {
-  const seq = new Map(); // date -> count
+//  - "mmdd_seq": 2/18(2) のように同日連番
+function buildTrendLabels(rows) {
+  const countMap = new Map();
+
+  // まず日付ごとの総件数を数える
+  for (const r of rows) {
+    countMap.set(r.date, (countMap.get(r.date) || 0) + 1);
+  }
+
+  const seqMap = new Map();
+
   return rows.map((r) => {
     const base = labelMMDD(r.date);
-    if (mode !== "mmdd_seq") return base;
+    const totalForDate = countMap.get(r.date) || 1;
 
-    const c = (seq.get(r.date) || 0) + 1;
-    seq.set(r.date, c);
-    return `${base}(${c})`;
+    const currentSeq = (seqMap.get(r.date) || 0) + 1;
+    seqMap.set(r.date, currentSeq);
+
+    // その日が1件だけなら日付のみ
+    if (totalForDate === 1) {
+      return base;
+    }
+
+    // 複数ある場合は (2) 以降を表示
+    if (currentSeq === 1) {
+      return base; // 1件目はそのまま
+    }
+
+    return `${base}(${currentSeq})`;
   });
 }
 
@@ -503,8 +522,8 @@ function drawGroupedBarsNoInnerGap(
   w,
   h,
   labels,
-  series, // [{ name, values[], color }]
-  { padding = 34, gapBetweenGroups = 8, showValues = true } = {},
+  series,
+  { padding = 34, gapBetweenGroups = 12, showValues = true } = {},
 ) {
   clearChart(ctx, w, h);
   drawAxes(ctx, w, h, { padding });
@@ -515,22 +534,24 @@ function drawGroupedBarsNoInnerGap(
   const nGroups = labels.length;
   if (nGroups === 0) return;
 
-  const nSeries = series.length; // 3想定
+  const nSeries = series.length;
   const maxV = Math.max(
     1,
     ...series.flatMap((s) => s.values.map((v) => Number(v) || 0)),
   );
 
-  const gap =
-    nGroups > 80 ? 2 : nGroups > 40 ? 4 : Math.max(4, gapBetweenGroups);
+  const gap = gapBetweenGroups;
 
   const groupW = (usableW - gap * (nGroups + 1)) / nGroups;
-  const barW = groupW / nSeries; // ★3本は隙間0
+
+  // ★ 棒幅を1/3にする
+  const barW = groupW / nSeries / 3;
 
   ctx.save();
   ctx.font =
     "12px system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif";
   ctx.textBaseline = "bottom";
+  ctx.textAlign = "center";
 
   for (let i = 0; i < nGroups; i++) {
     const baseX = padding + gap + i * (groupW + gap);
@@ -538,31 +559,49 @@ function drawGroupedBarsNoInnerGap(
     for (let s = 0; s < nSeries; s++) {
       const v = Number(series[s].values[i] || 0);
       const barH = (v / maxV) * usableH;
-      const x = baseX + s * barW;
+
+      // ★ グループ中央基準で配置
+      const groupCenter = baseX + groupW / 2;
+
+      const x = groupCenter - (nSeries / 2) * barW + s * barW;
+
       const y = 10 + (usableH - barH);
 
       // bar
       ctx.fillStyle = series[s].color;
       ctx.fillRect(x, y, barW, barH);
 
-      // value (棒の上)
+      // ★ 数値を棒の中央上に表示
       if (showValues && v > 0) {
         ctx.fillStyle = "rgba(255,255,255,0.95)";
-        // 棒が低いときは内側に入れない（上に出す）
-        const textY = Math.max(14, y - 2);
-        // 文字が潰れる場合の保険：細い時は出さない
-        if (barW >= 10) {
-          ctx.fillText(String(v), x + 2, textY);
-        }
+        ctx.fillText(String(v), x + barW / 2, y - 4);
       }
     }
   }
 
   ctx.restore();
 
-  // Xラベル（間引き）
-  const step = nGroups <= 10 ? 1 : nGroups <= 20 ? 2 : nGroups <= 40 ? 4 : 8;
-  drawXLabels(ctx, w, h, labels, { padding, step });
+  // ★ Xラベルをグループ中央に表示
+  drawXLabelsCentered(ctx, w, h, labels, { padding, groupW, gap });
+}
+
+function drawXLabelsCentered(ctx, w, h, labels, { padding, groupW, gap }) {
+  const y = h - padding + 18;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(156,163,175,0.9)";
+  ctx.font =
+    "12px system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif";
+  ctx.textAlign = "center";
+
+  for (let i = 0; i < labels.length; i++) {
+    const baseX = padding + gap + i * (groupW + gap);
+    const center = baseX + groupW / 2;
+
+    ctx.fillText(labels[i], center, y);
+  }
+
+  ctx.restore();
 }
 
 /* ====== Rendering ====== */
@@ -606,9 +645,8 @@ function renderTrendChart(rows) {
     gap: 8,
   });
 
-  // ★ラベル：どちらか選んでください
-  // const labels = buildTrendLabels(rows, "mmdd");      // 2/18
-  const labels = buildTrendLabels(rows, "mmdd_seq"); // 2/18(1)
+  // ★ラベル
+  const labels = buildTrendLabels(rows);
 
   const goals = rows.map((r) => r.goals);
   const assists = rows.map((r) => r.assists);
