@@ -683,7 +683,7 @@ function loadRecordToForm(record) {
 
   msgInfo(
     recordMsgEl,
-    `修正モード：${formatDate(record.date)} / ${record.place}`,
+    `修正モード：${formatDate(record.date)} / ${placeLabelOf(record.place)}`,
   );
 }
 
@@ -787,7 +787,7 @@ saveBtn.addEventListener("click", () => {
 
     msgInfo(
       recordMsgEl,
-      `更新しました：${formatDate(record.date)} / ${record.place}` +
+      `更新しました：${formatDate(record.date)} / ${placeLabelOf(record.place)}` +
         `（試合数 ${record.matches}、ゴール ${sumGoals(record)}、アシスト ${record.assists.total} / ${record.assists.targetName} ${record.assists.toTarget}、股抜き ${record.nutmegs.total}）`,
     );
 
@@ -1065,7 +1065,7 @@ function renderRecordsItems(recordsInGroup) {
           <div class="itemRow">
             <div class="itemMain">
               <div class="itemDate">${formatDate(r.date)}</div>
-              <div class="itemPlace">${escapeHtml(r.place)}</div>
+              <div class="itemPlace">${escapeHtml(placeLabelOf(r.place))}</div>
 
               <div class="muted small itemMeta">
                 試合数：${matches} /
