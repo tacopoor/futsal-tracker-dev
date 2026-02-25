@@ -1,5 +1,7 @@
 /* ====== Keys (must match app.js) ====== */
 const STORAGE_KEY = "futsal_records_v1";
+// ★分析/マイページ共通のフィルタ状態保存
+const FILTER_STATE_KEY = "futsal_filter_state_v1";
 
 /* ====== Helpers ====== */
 function n(v) {
@@ -110,7 +112,56 @@ function loadRecords() {
   }
 }
 
+function getAllYMs(allRecords) {
+  // ym は ""(すべて) / "YYYY" / "YYYY-MM" を許容しているので
+  // ここでは「すべて + 年 + 月」を作る
+  const years = new Set();
+  const months = new Set();
+
+  for (const r of allRecords) {
+    if (!r?.date) continue;
+    const y = String(r.date).slice(0, 4);
+    if (/^\d{4}$/.test(y)) years.add(y);
+    months.add(ymOfDate(r.date));
+  }
+
+  const yearsArr = [...years].sort((a, b) => b.localeCompare(a)); // desc
+  const monthsArr = [...months].sort((a, b) => b.localeCompare(a)); // desc
+
+  // 例：すべて / 2026年 / 2025年 / 2026-02 / 2026-01 ...
+  return ["", ...yearsArr, ...monthsArr];
+}
+
+function getAllPlaces(allRecords) {
+  const set = new Set();
+  for (const r of allRecords) {
+    if (r?.place) set.add(r.place);
+  }
+  return ["", ...[...set].sort((a, b) => a.localeCompare(b, "ja"))];
+}
+
+function ymLabel(ym) {
+  if (!ym) return "すべて";
+  if (/^\d{4}$/.test(ym)) return `${ym}年`;
+  return ym; // YYYY-MM
+}
+
+function fillSelectOptions(selectEl, values, labelFn) {
+  if (!selectEl) return;
+  selectEl.innerHTML = values
+    .map((v) => {
+      const label = labelFn ? labelFn(v) : v;
+      return `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
+    })
+    .join("");
+}
+
 /* ====== DOM ====== */
+
+// 分析条件セレクト
+const analysisYM = document.getElementById("analysisYM");
+const analysisPlace = document.getElementById("analysisPlace");
+
 const conditionText = document.getElementById("conditionText");
 const errMsg = document.getElementById("errMsg");
 
@@ -158,6 +209,65 @@ function clearError() {
   errMsg.classList.add("hidden");
 }
 
+function updateUrlParams(next) {
+  const url = new URL(location.href);
+  const sp = url.searchParams;
+
+  // ym: "" の場合は "all" に寄せる（既存 readParams の互換を活かす）
+  if (next.ym) sp.set("ym", next.ym);
+  else sp.set("ym", "all");
+
+  if (next.place) sp.set("place", next.place);
+  else sp.delete("place");
+
+  // 戻る先(back)など他パラメータは保持したまま
+  history.replaceState(null, "", url.toString());
+}
+
+function initAnalysisFilters(allRecords) {
+  if (!analysisYM || !analysisPlace) return;
+
+  const params = readParams();
+
+  // 候補を作成
+  const ymList = getAllYMs(allRecords);
+  const placeList = getAllPlaces(allRecords);
+
+  fillSelectOptions(analysisYM, ymList, ymLabel);
+  fillSelectOptions(analysisPlace, placeList, (p) => (p ? p : "すべて"));
+
+  // 値を反映（存在しない場合は "すべて"）
+  analysisYM.value = ymList.includes(params.ym) ? params.ym : "";
+  analysisPlace.value = placeList.includes(params.place) ? params.place : "";
+
+  // changeイベント（多重登録防止）
+  if (!analysisYM.__bound) {
+    analysisYM.__bound = true;
+    analysisYM.addEventListener("change", () => {
+      const next = { ym: analysisYM.value, place: analysisPlace.value };
+
+      // ★保存：戻ったときマイページにも反映させる
+      saveFilterState(next);
+
+      updateUrlParams(next);
+      render();
+    });
+  }
+
+  if (!analysisPlace.__bound) {
+    analysisPlace.__bound = true;
+    analysisPlace.addEventListener("change", () => {
+      const next = { ym: analysisYM.value, place: analysisPlace.value };
+
+      // ★保存
+      saveFilterState(next);
+
+      updateUrlParams(next);
+      render();
+    });
+  }
+}
+
 /* ====== Query params ====== */
 function readParams() {
   const sp = new URLSearchParams(location.search);
@@ -172,6 +282,22 @@ function readParams() {
 }
 
 /* ====== Filter ====== */
+
+function saveFilterState(state) {
+  try {
+    localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function loadFilterState() {
+  try {
+    const raw = localStorage.getItem(FILTER_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 function filterRecords(all, { ym, place }) {
   return all.filter((r) => {
     if (!r || !r.date || !r.place) return false;
@@ -999,6 +1125,10 @@ function render() {
 
   const params = readParams();
   const all = loadRecords();
+
+  // 分析条件セレクトを生成＆現在条件を反映
+  initAnalysisFilters(all);
+
   const filtered = filterRecords(all, params);
 
   renderCondition(params, filtered.length);
@@ -1068,6 +1198,8 @@ function init() {
     window.__resizeTimer = setTimeout(render, 150);
   });
 
+  // ★初回表示の条件も保存（マイページへ戻ったときに維持しやすい）
+  saveFilterState(readParams());
   render();
 }
 

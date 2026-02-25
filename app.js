@@ -1,6 +1,7 @@
 /* ====== Storage ====== */
 const STORAGE_KEY = "futsal_records_v1";
 const SETTINGS_KEY = "futsal_settings_v2";
+const FILTER_STATE_KEY = "futsal_filter_state_v1";
 
 /* ★最後に使った日付を保持 */
 const LAST_DATE_KEY = "futsal_last_date_v1";
@@ -94,7 +95,35 @@ function loadSettings() {
 function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
+function loadFilterState() {
+  try {
+    const raw = localStorage.getItem(FILTER_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
+function saveFilterState(state) {
+  try {
+    localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+// ★マイページのフィルタ select が用意できた後に呼ぶ
+function restoreMypageFilters(filterYMEl, filterPlaceEl) {
+  const st = loadFilterState();
+  if (!st) return;
+
+  // option生成後にセットするのが重要
+  if (filterYMEl && typeof st.ym === "string") {
+    // "all" の保存はしない設計なので "" = すべて
+    filterYMEl.value = st.ym || "";
+  }
+  if (filterPlaceEl && typeof st.place === "string") {
+    filterPlaceEl.value = st.place || "";
+  }
+}
 /* ====== Utilities ====== */
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -935,8 +964,21 @@ function applyFilters(records) {
   });
 }
 
-filterYM?.addEventListener("change", renderMypage);
-filterPlace.addEventListener("change", renderMypage);
+filterYM?.addEventListener("change", () => {
+  saveFilterState({
+    ym: filterYM?.value || "all",
+    place: filterPlace?.value || "",
+  });
+  renderMypage();
+});
+
+filterPlace.addEventListener("change", () => {
+  saveFilterState({
+    ym: filterYM?.value || "all",
+    place: filterPlace?.value || "",
+  });
+  renderMypage();
+});
 
 /* ====== KPI ====== */
 function renderKPIs(records) {
@@ -1191,6 +1233,9 @@ function renderMypage() {
   if (filterYM && filterYM.options.length === 0) {
     buildYMOptions(all);
   }
+
+  // ★復元（option生成後が重要）
+  restoreMypageFilters(filterYM, filterPlace);
 
   const filtered = applyFilters(all);
   renderKPIs(filtered);
@@ -1590,6 +1635,9 @@ window.addEventListener("hashchange", applyHashTab);
 function openAnalysisPage() {
   const ym = (filterYM?.value || "").trim(); // "all" / "YYYY" / "YYYY-MM"
   const place = (filterPlace?.value || "").trim(); // "" = すべて
+
+  // ★ここを追加
+  saveFilterState({ ym, place });
 
   const params = new URLSearchParams();
   if (ym) params.set("ym", ym);
