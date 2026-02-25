@@ -268,9 +268,27 @@ const settingsMsgEl = document.getElementById("settingsMsg");
 
 /* ====== Elements: Record ====== */
 const elDate = document.getElementById("date");
-/* ★日付選択時点で保持（即時セット扱い） */
-elDate?.addEventListener("input", () => setLastDate(elDate.value));
-elDate?.addEventListener("change", () => setLastDate(elDate.value));
+
+// 日付が確定したら保存する処理を1つに集約
+function commitSelectedDate() {
+  if (!elDate) return;
+  const v = (elDate.value || "").trim();
+  if (!v) return;
+  setLastDate(v);
+}
+
+// 基本：PC/AndroidはこれでだいたいOK
+elDate?.addEventListener("input", commitSelectedDate);
+elDate?.addEventListener("change", commitSelectedDate);
+
+// iOS対策：ピッカーを閉じたタイミングで拾えることが多い
+elDate?.addEventListener("blur", commitSelectedDate);
+elDate?.addEventListener("focusout", commitSelectedDate);
+
+// さらに保険：タップ操作のあとに value が反映される端末向け
+const commitSoon = () => setTimeout(commitSelectedDate, 0);
+elDate?.addEventListener("pointerup", commitSoon);
+elDate?.addEventListener("touchend", commitSoon);
 
 const elPlace = document.getElementById("place");
 const elMatches = document.getElementById("matches");

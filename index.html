@@ -454,23 +454,31 @@
       }
 
       @media (max-width: 520px) {
-        /* ★スマホでもURL＋タグは横並び優先、足りなければ折り返し */
+        /* ★スマホでも必ず1行：折り返し禁止 */
         .videoRow {
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           align-items: center;
         }
+
+        /* ★URL入力は縮んでOK（ここが重要） */
         .videoRow .videoUrl {
-          flex: 1 1 60%;
-          min-width: 160px;
+          flex: 1 1 auto;
+          min-width: 0; /* ← これが無いと縮まらず折り返しが起きがち */
         }
+
+        /* ★タグは一定幅を確保（好みで調整） */
         .videoRow .videoTag {
-          flex: 0 0 38%;
-          width: auto;
-          min-width: 140px;
+          flex: 0 0 120px; /* 例：120px固定。狭ければ 100px などに */
+          width: 120px;
+          min-width: 0;
         }
+
+        /* ★削除ボタンも固定 */
         .videoRow .videoDelBtn {
-          width: auto;
-          flex: 0 0 auto;
+          flex: 0 0 44px;
+          width: 44px;
+          min-width: 44px;
+          padding: 10px 0;
         }
       }
     </style>
