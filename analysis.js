@@ -243,7 +243,9 @@ function initAnalysisFilters(allRecords) {
   const placeList = getAllPlaces(allRecords);
 
   fillSelectOptions(analysisYM, ymList, ymLabel);
-  fillSelectOptions(analysisPlace, placeList, (p) => (p ? p : "すべて"));
+  fillSelectOptions(analysisPlace, placeList, (p) =>
+    p ? placeLabelOf(p) : "すべて",
+  );
 
   // 値を反映（存在しない場合は "すべて"）
   analysisYM.value = ymList.includes(params.ym) ? params.ym : "";
