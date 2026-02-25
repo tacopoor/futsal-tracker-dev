@@ -4,6 +4,15 @@ const STORAGE_KEY = "futsal_records_v1";
 const FILTER_STATE_KEY = "futsal_filter_state_v1";
 
 /* ====== Helpers ====== */
+
+/* ====== Place label override（表示だけ差し替え） ====== */
+const PLACE_LABEL_OVERRIDES = {
+  マリノストリコールパーク: "マリノストリコロールパーク新吉田",
+};
+
+function placeLabelOf(value) {
+  return PLACE_LABEL_OVERRIDES[value] || value;
+}
 function n(v) {
   const x = Number(v);
   return Number.isFinite(x) && x >= 0 ? x : 0;
@@ -965,7 +974,7 @@ function renderPlaceTable(records) {
     .map(
       (r) => `
     <tr>
-      <td>${escapeHtml(r.place)}</td>
+      <td>${escapeHtml(placeLabelOf(r.place))}</td>
       <td>${r.playDays}</td>
       <td>${r.matches}</td>
       <td>${r.goals}</td>
@@ -998,7 +1007,7 @@ function renderRecordsTable(records) {
       const memo = r.memo ? escapeHtml(r.memo) : "";
 
       const dateStr = formatDate(r.date); // 例: YYYY/MM/DD
-      const placeStr = escapeHtml(r.place || "");
+      const placeStr = escapeHtml(placeLabelOf(r.place || ""));
 
       return `
       <tr>
