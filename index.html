@@ -152,10 +152,6 @@
         font-size: 14px;
         margin: 0 0 8px;
       }
-      /* ★記録画面の上3つラベルを h2 と同等サイズに */
-      .labelBig {
-        font-size: 14px;
-      }
       .sep {
         height: 1px;
         background: var(--line);
@@ -488,11 +484,11 @@
 
         <div class="grid">
           <div>
-            <label class="labelBig">日付</label>
+            <label class="h2">日付</label>
             <input id="date" type="date" />
           </div>
           <div>
-            <label class="labelBig">場所（フットサル場）</label>
+            <label class="h2">場所（フットサル場）</label>
             <select id="place">
               <option value="" selected disabled>選択してください</option>
               <!-- options は app.js で動的に入れます -->
@@ -502,7 +498,7 @@
 
         <div class="grid">
           <div>
-            <label class="labelBig">試合数（1〜20）</label>
+            <label class="h2">試合数（1〜20）</label>
             <select id="matches" aria-label="試合数"></select>
           </div>
           <div><!-- 空欄でレイアウト揃え --></div>
